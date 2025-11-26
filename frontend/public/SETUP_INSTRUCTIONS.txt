@@ -1,0 +1,212 @@
+NFL DK DASHBOARD - SETUP INSTRUCTIONS
+======================================
+
+You've downloaded: nfl-fantasy-analytics-complete.tar.gz (3.7 MB)
+
+This archive contains:
+- Complete frontend code (React)
+- Complete backend code (FastAPI/Python)
+- Developer Handoff Packet
+- Claude Code Rollover Guide
+- All configuration files
+
+EXTRACTION INSTRUCTIONS
+=======================
+
+For Mac/Linux:
+--------------
+1. Open Terminal
+2. Navigate to your downloads folder:
+   cd ~/Downloads
+
+3. Extract the archive:
+   tar -xzf nfl-fantasy-analytics-complete.tar.gz
+
+4. This creates a folder structure:
+   frontend/
+   backend/
+   DEVELOPER_HANDOFF_PACKET.md
+   CLAUDE_CODE_ROLLOVER_GUIDE.md
+
+5. Create project folder and move files:
+   mkdir nfl-fantasy-analytics
+   mv frontend backend *.md nfl-fantasy-analytics/
+   cd nfl-fantasy-analytics
+
+
+For Windows:
+------------
+1. Right-click on nfl-fantasy-analytics-complete.tar.gz
+2. Select "Extract All..." (you may need 7-Zip or WinRAR)
+3. Choose destination folder
+4. Create a folder called "nfl-fantasy-analytics"
+5. Move all extracted contents into that folder
+
+
+NEXT STEPS - QUICK START
+=========================
+
+1. Open the project in Cursor (Claude Code):
+   - Launch Cursor IDE
+   - File → Open Folder
+   - Select the "nfl-fantasy-analytics" folder
+
+2. Read the setup guide:
+   - Open CLAUDE_CODE_ROLLOVER_GUIDE.md
+   - Follow Phase 3: Local Environment Setup
+
+3. Install Backend Dependencies:
+   - Open Cursor Terminal (Ctrl+` or Cmd+`)
+   - cd backend
+   - python -m venv venv
+   - source venv/bin/activate  (Mac/Linux)
+   - venv\Scripts\activate     (Windows)
+   - pip install -r requirements.txt
+
+4. Install Frontend Dependencies:
+   - Open new terminal tab
+   - cd frontend
+   - npm install   (or: yarn install)
+
+5. Create Environment Files:
+
+   Backend (.env):
+   ---------------
+   Create file: backend/.env
+   
+   Contents:
+   MONGO_URL=mongodb://localhost:27017/nfl_fantasy
+
+   Frontend (.env):
+   ----------------
+   Create file: frontend/.env
+   
+   Contents:
+   REACT_APP_BACKEND_URL=http://localhost:8001
+
+6. Start Backend:
+   - Terminal in backend folder
+   - source venv/bin/activate
+   - uvicorn server:app --host 0.0.0.0 --port 8001 --reload
+
+7. Start Frontend:
+   - Terminal in frontend folder
+   - npm start
+
+8. Load Initial Data:
+   - Open browser
+   - Go to http://localhost:3000
+   - Click "Sync Data" button (or use curl):
+     curl -X POST http://localhost:8001/api/load-data
+
+9. Start Coding with Claude:
+   - In Cursor, press Cmd+L (Mac) or Ctrl+L (Windows)
+   - Paste this:
+
+   "Hi! I just set up the NFL DK DASHBOARD locally.
+   
+   Please read CLAUDE_CODE_ROLLOVER_GUIDE.md for full context.
+   
+   The app is running:
+   - Backend: http://localhost:8001
+   - Frontend: http://localhost:3000
+   
+   I'm ready to start developing. Can you confirm you understand 
+   the project structure and suggest what we should work on first?"
+
+
+WHAT'S INCLUDED
+===============
+
+Frontend (React):
+- src/App.js (2200+ lines) - Main component
+- src/App.css - Tailwind styles
+- src/components/ui/ - Shadcn components
+- package.json - Dependencies
+- Configuration files
+
+Backend (FastAPI):
+- server.py (2000+ lines) - API server
+- requirements.txt - Python dependencies
+
+Documentation:
+- DEVELOPER_HANDOFF_PACKET.md - Complete technical docs
+- CLAUDE_CODE_ROLLOVER_GUIDE.md - Claude Code setup guide
+
+NOT INCLUDED (You'll create these):
+====================================
+- Database file (nfl_data.db) - Created when you run /api/load-data
+- node_modules/ - Created when you run npm install
+- venv/ - Created when you set up Python virtual environment
+- .env files - You create these manually (see step 5 above)
+
+
+SYSTEM REQUIREMENTS
+===================
+- Python 3.10 or higher
+- Node.js 18 or higher
+- 4GB RAM minimum
+- 500MB free disk space
+
+
+TROUBLESHOOTING
+===============
+
+"Module not found" errors:
+- Backend: pip install -r requirements.txt
+- Frontend: npm install
+
+"Port already in use":
+- Backend: Change port in uvicorn command (--port 8002)
+- Frontend: Set PORT=3001 before npm start
+
+"CORS errors":
+- Check backend/.env has correct URL
+- Check frontend/.env has http://localhost:8001
+
+"No data showing":
+- Run: curl -X POST http://localhost:8001/api/load-data
+- Wait 30-60 seconds for data to load
+
+
+GETTING HELP
+============
+
+1. Read CLAUDE_CODE_ROLLOVER_GUIDE.md (comprehensive guide)
+2. Read DEVELOPER_HANDOFF_PACKET.md (technical details)
+3. Ask Claude in Cursor (Cmd/Ctrl+L)
+4. Check browser console (F12) for frontend errors
+5. Check terminal logs for backend errors
+
+
+QUICK VERIFICATION
+==================
+
+After setup, verify everything works:
+
+1. Backend health check:
+   curl http://localhost:8001/api/health
+   Expected: {"status":"healthy"}
+
+2. Frontend loads:
+   Open http://localhost:3000
+   Should see NFL Fantasy Analytics dashboard
+
+3. Data loads:
+   Click "Sync Data" button
+   Wait 30-60 seconds
+   Should see player data in Data Table
+
+4. Trend Tool works:
+   Click "Trend Tool" tab
+   Should see week-by-week player stats
+
+
+YOU'RE READY!
+=============
+
+Open Cursor, load the project, and start coding with Claude!
+
+For detailed instructions, see CLAUDE_CODE_ROLLOVER_GUIDE.md
+
+Good luck! 🚀

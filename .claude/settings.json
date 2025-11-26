@@ -1,0 +1,15 @@
+{
+  "outputStyle": "Explanatory",
+  "permissions": {
+    "allow": [
+      "Edit(**)",
+      "Write(**)",
+      "Bash(*:*)"
+    ],
+    "deny": [
+      "Read(./.env*)",
+      "Read(./**/secrets/**)"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}

@@ -1,0 +1,301 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+        "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+        monospace;
+}
+
+
+
+@layer base {
+  :root {
+        --background: 0 0% 100%;
+        --foreground: 0 0% 3.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 0 0% 3.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 0 0% 3.9%;
+        --primary: 0 0% 9%;
+        --primary-foreground: 0 0% 98%;
+        --secondary: 0 0% 96.1%;
+        --secondary-foreground: 0 0% 9%;
+        --muted: 0 0% 96.1%;
+        --muted-foreground: 0 0% 45.1%;
+        --accent: 0 0% 96.1%;
+        --accent-foreground: 0 0% 9%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 0 0% 89.8%;
+        --input: 0 0% 89.8%;
+        --ring: 0 0% 3.9%;
+        --chart-1: 12 76% 61%;
+        --chart-2: 173 58% 39%;
+        --chart-3: 197 37% 24%;
+        --chart-4: 43 74% 66%;
+        --chart-5: 27 87% 67%;
+        --radius: 0.5rem;
+    }
+  .dark {
+        --background: 0 0% 3.9%;
+        --foreground: 0 0% 98%;
+        --card: 0 0% 3.9%;
+        --card-foreground: 0 0% 98%;
+        --popover: 0 0% 3.9%;
+        --popover-foreground: 0 0% 98%;
+        --primary: 0 0% 98%;
+        --primary-foreground: 0 0% 9%;
+        --secondary: 0 0% 14.9%;
+        --secondary-foreground: 0 0% 98%;
+        --muted: 0 0% 14.9%;
+        --muted-foreground: 0 0% 63.9%;
+        --accent: 0 0% 14.9%;
+        --accent-foreground: 0 0% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 0 0% 14.9%;
+        --input: 0 0% 14.9%;
+        --ring: 0 0% 83.1%;
+        --chart-1: 220 70% 50%;
+        --chart-2: 160 60% 45%;
+        --chart-3: 30 80% 55%;
+        --chart-4: 280 65% 60%;
+        --chart-5: 340 75% 55%;
+    }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+}
+
+/* Optimizer Filter Styles */
+.optimizer-filter-header {
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    border-bottom: 1px solid #BFDBFE;
+}
+
+.optimizer-filter-header:hover {
+    background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+}
+
+.optimizer-section-bg {
+    background-color: #F9FAFB;
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.optimizer-section-border {
+    border: 1px solid #E5E7EB;
+}
+
+.optimizer-dropdown-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23374151'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.4rem center;
+    background-size: 0.8rem;
+    padding-right: 1.5rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.optimizer-dropdown-select:hover {
+    border-color: #9CA3AF;
+}
+
+.optimizer-dropdown-select:focus {
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.optimizer-toggle-btn {
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.optimizer-toggle-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.optimizer-toggle-btn:active {
+    transform: scale(0.98);
+}
+
+.optimizer-toggle-active {
+    background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+    color: white;
+    border-color: #2563EB;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.optimizer-game-card {
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: white;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E5E7EB;
+}
+
+.optimizer-game-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    border-color: #93C5FD;
+}
+
+.optimizer-game-card.selected {
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.optimizer-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.optimizer-badge-blue {
+    background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+    color: #1E40AF;
+    border: 1px solid #93C5FD;
+}
+
+.optimizer-badge-green {
+    background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
+    color: #065F46;
+    border: 1px solid #6EE7B7;
+}
+
+.optimizer-filter-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.optimizer-filter-content.expanded {
+    max-height: 550px;
+    overflow-y: auto;
+}
+
+.optimizer-filter-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.optimizer-filter-content::-webkit-scrollbar-track {
+    background: #F3F4F6;
+    border-radius: 3px;
+}
+
+.optimizer-filter-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #9CA3AF 0%, #6B7280 100%);
+    border-radius: 3px;
+}
+
+.optimizer-filter-content::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #6B7280 0%, #4B5563 100%);
+}
+
+.optimizer-game-time {
+    font-size: 0.875rem;
+    color: #6B7280;
+    font-weight: 600;
+    white-space: nowrap;
+    background-color: #F3F4F6;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.optimizer-game-score {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #1F2937;
+    min-width: 20px;
+    text-align: center;
+}
+
+.optimizer-game-winner {
+    color: #059669;
+}
+
+.optimizer-final-badge {
+    background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+    color: white;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(220, 38, 38, 0.3);
+}
+
+.optimizer-vs-indicator {
+    font-size: 0.6rem;
+    color: #9CA3AF;
+    font-weight: 600;
+}
+
+.optimizer-games-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.optimizer-day-separator {
+    background: linear-gradient(90deg, transparent 0%, #E5E7EB 50%, transparent 100%);
+    height: 1px;
+    margin: 8px 0;
+    position: relative;
+}
+
+.optimizer-day-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 0 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.optimizer-action-btn {
+    font-size: 0.65rem;
+    color: #3B82F6;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.optimizer-action-btn:hover {
+    background-color: #EFF6FF;
+    color: #2563EB;
+}

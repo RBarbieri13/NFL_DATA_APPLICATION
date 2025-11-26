@@ -1,0 +1,48 @@
+{
+  "claude": {
+    "maxTokens": 200000,
+    "autoApprove": {
+      "fileEdits": true,
+      "fileCreation": true,
+      "fileDelete": true,
+      "directoryCreation": true,
+      "directoryDelete": true,
+      "terminalCommands": true,
+      "npmInstall": true,
+      "pipInstall": true,
+      "gitCommands": true,
+      "testRun": true,
+      "buildRun": true,
+      "devServerRun": true
+    },
+    "limits": {
+      "dailyTokenLimit": 5000000,
+      "monthlyTokenLimit": 50000000,
+      "dailyAPICallLimit": 100000,
+      "monthlyAPICallLimit": 1000000,
+      "maxConcurrentOperations": 50,
+      "enforceGracefulDegradation": false
+    },
+    "monitoring": {
+      "trackUsage": true,
+      "reportingFrequency": "daily",
+      "costTrackingEnabled": true,
+      "costAlertThreshold": 100,
+      "costReportFormat": "detailed"
+    },
+    "safety": {
+      "preventRiskyOperations": false,
+      "allowUnreviewedDependencies": true,
+      "allowProductionChanges": true,
+      "allowDataModification": true,
+      "confirmBeforePermanentDelete": false
+    },
+    "development": {
+      "autoRunTests": true,
+      "autoCommitChanges": false,
+      "autoCreateBackups": true,
+      "autoUpdateDependencies": false,
+      "verbose": true
+    }
+  }
+}

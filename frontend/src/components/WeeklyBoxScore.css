@@ -1,0 +1,271 @@
+:root {
+  --theme-teal: #5a9e9f;
+  --theme-teal-light: #e0f2f1;
+  --theme-gray-bg: #f0f2f5;
+  --theme-border: #dce1e6;
+  --text-dark: #333;
+  --text-light: #666;
+  /* Conditional Formatting Colors */
+  --bg-green-dark: #498f53; /* For dark green cells with white text */
+  --bg-green-light: #c8e6c9; /* For light green cells */
+  --bg-yellow: #fff59d;
+  --bg-red-light: #ffccbc;
+  --bg-red-dark: #d84315; /* For dark red cells with white text */
+}
+
+.weekly-box-score-container {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--theme-gray-bg);
+  padding: 20px;
+  color: var(--text-dark);
+  min-height: 100vh;
+}
+
+/* --- Header / Filter Bar Section --- */
+.dashboard-header {
+  background: #fff;
+  padding: 15px 20px;
+  border-radius: 12px;
+  border: 2px solid var(--theme-teal);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-label {
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.filter-input-container {
+  background: var(--theme-teal-light);
+  border-radius: 20px;
+  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+}
+
+/* Mockup styles for filter inputs (non-functional) */
+.mock-chip {
+  background: var(--theme-teal);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  margin-right: 5px;
+  display: flex;
+  align-items: center;
+}
+.mock-chip i { font-style: normal; margin-left: 5px; cursor: pointer;}
+.mock-slider { width: 150px; height: 6px; background: #ccc; border-radius: 3px; position: relative; }
+.mock-slider-fill { position: absolute; left: 20%; width: 60%; height: 100%; background: var(--theme-teal); border-radius: 3px; }
+.mock-slider-thumb { position: absolute;top: -4px; width: 14px; height: 14px; background: white; border: 2px solid var(--theme-teal); border-radius: 50%; }
+
+.btn-reset {
+  margin-left: auto;
+  background: var(--theme-teal-light);
+  color: var(--theme-teal);
+  border: 1px solid var(--theme-teal);
+  padding: 8px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* --- Main Table Container --- */
+.table-container {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  overflow-x: auto; /* Allow horizontal scroll for smaller screens */
+}
+
+.weekly-box-score-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  white-space: nowrap; /* Prevent text wrapping to maintain density */
+}
+
+.weekly-box-score-table th, .weekly-box-score-table td {
+  padding: 6px 8px;
+  text-align: center;
+  border: 1px solid var(--theme-border);
+}
+
+/* --- Table Headers --- */
+.weekly-box-score-table thead th {
+  background-color: #eef2f6; /* Light gray header bg */
+  color: var(--text-light);
+  font-weight: 600;
+}
+
+/* The darker gray top-level week headers */
+.header-week-top {
+  background-color: #dde3ea !important;
+  color: var(--text-dark) !important;
+  font-weight: 700 !important;
+}
+/* The mid-level category headers (Passing, Rushing) */
+.header-category {
+  background-color: #eef2f6;
+}
+/* The bottom-level stat headers */
+.header-stat {
+   font-size: 0.75rem;
+   color: var(--text-light);
+}
+
+/* --- Table Body --- */
+.weekly-box-score-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+/* Fixed Left Columns Styling */
+.col-fixed-left {
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 2;
+  text-align: left;
+  font-weight: 600;
+}
+/* Ensure fixed column borders look right */
+th.col-fixed-left, td.col-fixed-left {
+     border-right: 2px solid var(--theme-border);
+}
+
+/* --- Visual Separators --- */
+/* The thick teal border separating week groups */
+.group-separator {
+  border-left: 3px solid var(--theme-teal) !important;
+}
+
+/* --- Conditional Formatting Utility Classes --- */
+.cf-green-light { background-color: var(--bg-green-light); color: #1b5e20; }
+.cf-green-dark { background-color: var(--bg-green-dark); color: white; font-weight: bold;}
+.cf-yellow { background-color: var(--bg-yellow); color: #7f6000; }
+.cf-red-light { background-color: var(--bg-red-light); color: #bf360c; }
+.cf-red-dark { background-color: var(--bg-red-dark); color: white; font-weight: bold;}
+
+/* Small utility to align player names left, numbers center */
+.text-left { text-align: left; }
+.pos-label { font-weight: bold; color: var(--text-light); }
+
+/* --- New Styles for Live Data Component --- */
+
+/* Loading Indicator */
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  color: var(--theme-teal);
+  font-weight: 500;
+}
+
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--theme-teal-light);
+  border-top-color: var(--theme-teal);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 10px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error Message */
+.error-message {
+  background: var(--bg-red-light);
+  color: #bf360c;
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ffab91;
+}
+
+/* Stats Summary */
+.stats-summary {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.player-count {
+  font-weight: 600;
+  color: var(--theme-teal);
+}
+
+/* Filter Selects and Inputs */
+.filter-select {
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  background: white;
+  color: var(--text-dark);
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--theme-teal);
+}
+
+.filter-select-small {
+  border: 1px solid var(--theme-border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+  width: 60px;
+  background: white;
+}
+
+.filter-input-small {
+  border: 1px solid var(--theme-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  width: 70px;
+  background: white;
+}
+
+.filter-input-small:focus,
+.filter-select-small:focus {
+  outline: none;
+  border-color: var(--theme-teal);
+}
+
+/* Mock Chip Active State */
+.mock-chip.active {
+  background: var(--theme-teal) !important;
+  color: white !important;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-light);
+  font-style: italic;
+}
