@@ -1316,7 +1316,6 @@ function App() {
           <Route path="/" element={<FantasyDashboard />} />
           <Route path="/data-table" element={<FantasyDashboard />} />
           <Route path="/trend-tool" element={<FantasyDashboard />} />
-          <Route path="/weekly-box-score" element={<FantasyDashboard />} />
           <Route path="/fantasy-analyzer" element={<FantasyAnalyzerDemo />} />
           <Route path="/admin" element={<Admin />} />
         </Routes>

@@ -9,6 +9,60 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const TrendToolGrid = ({ data, startWeek, endWeek, isPPR }) => {
 
+  // Helper function to get subtle background color for snap counts
+  const getSnapBackgroundColor = (value, allData, weekNum) => {
+    if (!value || value <= 0) return '';
+    
+    // Get all snap values for this week to calculate relative position
+    const allSnaps = allData
+      .map(player => player.weeks?.[weekNum]?.snap_percentage)
+      .filter(v => v && v > 0);
+    
+    if (allSnaps.length === 0) return '';
+    
+    const min = Math.min(...allSnaps);
+    const max = Math.max(...allSnaps);
+    const range = max - min;
+    
+    if (range === 0) return '';
+    
+    // Calculate relative position (0 to 1)
+    const position = (value - min) / range;
+    
+    // Subtle green scale: higher snaps = more green
+    if (position >= 0.7) return 'rgba(34, 197, 94, 0.15)'; // Light green
+    if (position >= 0.4) return 'rgba(234, 179, 8, 0.1)';  // Very light yellow
+    if (position < 0.3) return 'rgba(239, 68, 68, 0.1)';   // Very light red
+    return '';
+  };
+
+  // Helper function to get subtle background color for fantasy points
+  const getFptsBackgroundColor = (value, allData, weekNum) => {
+    if (!value || value <= 0) return '';
+    
+    // Get all FPTS values for this week to calculate relative position
+    const allFpts = allData
+      .map(player => player.weeks?.[weekNum]?.fantasy_points)
+      .filter(v => v && v > 0);
+    
+    if (allFpts.length === 0) return '';
+    
+    const min = Math.min(...allFpts);
+    const max = Math.max(...allFpts);
+    const range = max - min;
+    
+    if (range === 0) return '';
+    
+    // Calculate relative position (0 to 1)
+    const position = (value - min) / range;
+    
+    // Subtle green/red scale: higher FPTS = more green
+    if (position >= 0.7) return 'rgba(34, 197, 94, 0.15)'; // Light green
+    if (position >= 0.4) return 'rgba(234, 179, 8, 0.1)';  // Very light yellow
+    if (position < 0.3) return 'rgba(239, 68, 68, 0.1)';   // Very light red
+    return '';
+  };
+
   const columnDefs = useMemo(() => {
     const cols = [
       {
@@ -78,14 +132,22 @@ const TrendToolGrid = ({ data, startWeek, endWeek, isPPR }) => {
                 field: `weeks.${week}.snap_percentage`,
                 width: 50,
                 cellClass: 'text-center text-xs flex items-center justify-center border-r border-gray-200',
-                valueFormatter: (params) => params.value ? Math.round(params.value) : '-'
+                valueFormatter: (params) => params.value ? Math.round(params.value) : '-',
+                cellStyle: (params) => {
+                  const bgColor = getSnapBackgroundColor(params.value, data, week);
+                  return bgColor ? { backgroundColor: bgColor } : {};
+                }
               },
               {
                 headerName: 'FPTS',
                 field: `weeks.${week}.fantasy_points`,
                 width: 60,
-                cellClass: 'font-bold text-center bg-gray-50 border-r border-gray-200 flex items-center justify-center',
-                valueFormatter: (params) => params.value ? params.value.toFixed(1) : '-'
+                cellClass: 'font-bold text-center border-r border-gray-200 flex items-center justify-center',
+                valueFormatter: (params) => params.value ? params.value.toFixed(1) : '-',
+                cellStyle: (params) => {
+                  const bgColor = getFptsBackgroundColor(params.value, data, week);
+                  return bgColor ? { backgroundColor: bgColor } : {};
+                }
               }
             ]
           },

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:10000';
 
@@ -10,11 +11,12 @@ const NFL_TEAMS = [
 ];
 
 // Helper Components for Styles
-const HeaderCell = ({ children, className = "", colSpan = 1, rowSpan = 1 }) => (
+const HeaderCell = ({ children, className = "", colSpan = 1, rowSpan = 1, onClick = null }) => (
   <th
     colSpan={colSpan}
     rowSpan={rowSpan}
-    className={`border border-gray-600 px-1 py-1 text-xs font-bold text-white text-center ${className}`}
+    className={`border border-gray-600 px-1 py-1 text-xs font-bold text-white text-center ${onClick ? 'cursor-pointer hover:bg-opacity-80' : ''} ${className}`}
+    onClick={onClick}
   >
     {children}
   </th>
@@ -42,7 +44,25 @@ const FantasyAnalyzer = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const statsPerWeekCols = 13;
+  // Collapsible state for each week (true = expanded, false = collapsed)
+  const [expandedWeeks, setExpandedWeeks] = useState({});
+
+  // Toggle week expansion
+  const toggleWeekExpansion = (week) => {
+    setExpandedWeeks(prev => ({
+      ...prev,
+      [week]: !prev[week]
+    }));
+  };
+
+  // Number of columns per week when expanded vs collapsed
+  const statsPerWeekColsExpanded = 13;
+  const statsPerWeekColsCollapsed = 2; // Just # and FPTS
+
+  // Calculate total columns for a week based on expansion state
+  const getStatsPerWeekCols = (week) => {
+    return expandedWeeks[week] ? statsPerWeekColsExpanded : statsPerWeekColsCollapsed;
+  };
 
   // Calculate weeks to show
   const weeksToShow = useMemo(() => {
@@ -129,31 +149,39 @@ const FantasyAnalyzer = () => {
   const renderWeeklyRowData = (playerWeeks) => {
     return weeksToShow.map((weekNum) => {
       const weekData = playerWeeks?.find(w => w.weekNum === weekNum);
+      const isExpanded = expandedWeeks[weekNum];
+      
       if (!weekData) {
-        return Array(statsPerWeekCols).fill(0).map((_, idx) => (
+        const colCount = isExpanded ? statsPerWeekColsExpanded : statsPerWeekColsCollapsed;
+        return Array(colCount).fill(0).map((_, idx) => (
           <DataCell key={`empty-${weekNum}-${idx}`}>-</DataCell>
         ));
       }
 
       return (
         <React.Fragment key={weekNum}>
-          {/* Misc */}
+          {/* Summary stats (always visible) */}
           <DataCell className="bg-gray-100 font-semibold">{weekData.misc?.num || '-'}</DataCell>
           <DataCell className="bg-gray-100 font-bold">{weekData.misc?.fpts?.toFixed(1) || '-'}</DataCell>
-          {/* Passing */}
-          <DataCell>{weekData.passing?.cmpAtt || '-'}</DataCell>
-          <DataCell>{weekData.passing?.yds || '-'}</DataCell>
-          <DataCell>{weekData.passing?.td || '-'}</DataCell>
-          <DataCell>{weekData.passing?.int || '-'}</DataCell>
-          {/* Rushing */}
-          <DataCell>{weekData.rushing?.att || '-'}</DataCell>
-          <DataCell>{weekData.rushing?.yds || '-'}</DataCell>
-          <DataCell>{weekData.rushing?.td || '-'}</DataCell>
-          {/* Receiving */}
-          <DataCell>{weekData.receiving?.tgts || '-'}</DataCell>
-          <DataCell>{weekData.receiving?.rec || '-'}</DataCell>
-          <DataCell>{weekData.receiving?.yds || '-'}</DataCell>
-          <DataCell>{weekData.receiving?.td || '-'}</DataCell>
+          {/* Detailed stats (only when expanded) */}
+          {isExpanded && (
+            <>
+              {/* Passing */}
+              <DataCell>{weekData.passing?.cmpAtt || '-'}</DataCell>
+              <DataCell>{weekData.passing?.yds || '-'}</DataCell>
+              <DataCell>{weekData.passing?.td || '-'}</DataCell>
+              <DataCell>{weekData.passing?.int || '-'}</DataCell>
+              {/* Rushing */}
+              <DataCell>{weekData.rushing?.att || '-'}</DataCell>
+              <DataCell>{weekData.rushing?.yds || '-'}</DataCell>
+              <DataCell>{weekData.rushing?.td || '-'}</DataCell>
+              {/* Receiving */}
+              <DataCell>{weekData.receiving?.tgts || '-'}</DataCell>
+              <DataCell>{weekData.receiving?.rec || '-'}</DataCell>
+              <DataCell>{weekData.receiving?.yds || '-'}</DataCell>
+              <DataCell>{weekData.receiving?.td || '-'}</DataCell>
+            </>
+          )}
         </React.Fragment>
       );
     });
@@ -295,16 +323,24 @@ const FantasyAnalyzer = () => {
       <div className="overflow-x-auto">
         <table className="border-collapse w-full border border-gray-800">
           <thead>
-            {/* Header Row 1: Top Level Categories */}
+            {/* Header Row 1: Top Level Categories with Week Titles */}
             <tr>
               <HeaderCell colSpan={6} className="bg-gray-300 text-black">Matchup</HeaderCell>
               {weeksToShow.map(week => (
                 <HeaderCell
                   key={week}
-                  colSpan={statsPerWeekCols}
-                  className="bg-white text-black border-b-0 text-lg"
+                  colSpan={getStatsPerWeekCols(week)}
+                  className="bg-slate-800 text-white border-b-0 text-lg"
+                  onClick={() => toggleWeekExpansion(week)}
                 >
-                  Week {week}
+                  <div className="flex items-center justify-center gap-2">
+                    {expandedWeeks[week] ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                    Week {week}
+                  </div>
                 </HeaderCell>
               ))}
             </tr>
@@ -322,10 +358,14 @@ const FantasyAnalyzer = () => {
               {/* Repeated Week Headers */}
               {weeksToShow.map(week => (
                 <React.Fragment key={week}>
-                  <HeaderCell colSpan={2} className="bg-gray-600">Misc.</HeaderCell>
-                  <HeaderCell colSpan={4} className="bg-[#0F4C81]">Passing</HeaderCell>
-                  <HeaderCell colSpan={3} className="bg-[#2E7D32]">Rushing</HeaderCell>
-                  <HeaderCell colSpan={4} className="bg-[#4A148C]">Receiving</HeaderCell>
+                  <HeaderCell colSpan={2} className="bg-gray-600">Summary</HeaderCell>
+                  {expandedWeeks[week] && (
+                    <>
+                      <HeaderCell colSpan={4} className="bg-[#0F4C81]">Passing</HeaderCell>
+                      <HeaderCell colSpan={3} className="bg-[#2E7D32]">Rushing</HeaderCell>
+                      <HeaderCell colSpan={4} className="bg-[#4A148C]">Receiving</HeaderCell>
+                    </>
+                  )}
                 </React.Fragment>
               ))}
             </tr>
@@ -334,23 +374,28 @@ const FantasyAnalyzer = () => {
             <tr className="text-[10px]">
               {weeksToShow.map(week => (
                 <React.Fragment key={week}>
-                  {/* Misc */}
+                  {/* Summary (always visible) */}
                   <HeaderCell className="bg-gray-500">#</HeaderCell>
                   <HeaderCell className="bg-gray-500">FPTS</HeaderCell>
-                  {/* Passing */}
-                  <HeaderCell className="bg-[#1F5E91]">Cmp-Att</HeaderCell>
-                  <HeaderCell className="bg-[#1F5E91]">Yds</HeaderCell>
-                  <HeaderCell className="bg-[#1F5E91]">TD</HeaderCell>
-                  <HeaderCell className="bg-[#1F5E91]">Int.</HeaderCell>
-                  {/* Rushing */}
-                  <HeaderCell className="bg-[#3E8D42]">Att</HeaderCell>
-                  <HeaderCell className="bg-[#3E8D42]">Yds</HeaderCell>
-                  <HeaderCell className="bg-[#3E8D42]">TD</HeaderCell>
-                  {/* Receiving */}
-                  <HeaderCell className="bg-[#5A249C]">Tgts</HeaderCell>
-                  <HeaderCell className="bg-[#5A249C]">Rec</HeaderCell>
-                  <HeaderCell className="bg-[#5A249C]">Yds</HeaderCell>
-                  <HeaderCell className="bg-[#5A249C]">TD</HeaderCell>
+                  {/* Detailed stats (only when expanded) */}
+                  {expandedWeeks[week] && (
+                    <>
+                      {/* Passing */}
+                      <HeaderCell className="bg-[#1F5E91]">Cmp-Att</HeaderCell>
+                      <HeaderCell className="bg-[#1F5E91]">Yds</HeaderCell>
+                      <HeaderCell className="bg-[#1F5E91]">TD</HeaderCell>
+                      <HeaderCell className="bg-[#1F5E91]">Int.</HeaderCell>
+                      {/* Rushing */}
+                      <HeaderCell className="bg-[#3E8D42]">Att</HeaderCell>
+                      <HeaderCell className="bg-[#3E8D42]">Yds</HeaderCell>
+                      <HeaderCell className="bg-[#3E8D42]">TD</HeaderCell>
+                      {/* Receiving */}
+                      <HeaderCell className="bg-[#5A249C]">Tgts</HeaderCell>
+                      <HeaderCell className="bg-[#5A249C]">Rec</HeaderCell>
+                      <HeaderCell className="bg-[#5A249C]">Yds</HeaderCell>
+                      <HeaderCell className="bg-[#5A249C]">TD</HeaderCell>
+                    </>
+                  )}
                 </React.Fragment>
               ))}
             </tr>
@@ -359,7 +404,7 @@ const FantasyAnalyzer = () => {
           <tbody>
             {data.length === 0 && !loading ? (
               <tr>
-                <td colSpan={6 + (weeksToShow.length * statsPerWeekCols)} className="text-center py-8 text-gray-500">
+                <td colSpan={6 + weeksToShow.reduce((sum, week) => sum + getStatsPerWeekCols(week), 0)} className="text-center py-8 text-gray-500">
                   No data available. Adjust filters or check API connection.
                 </td>
               </tr>
