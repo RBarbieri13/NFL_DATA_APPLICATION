@@ -98,7 +98,6 @@ const FantasyDashboard = () => {
     // Initialize from URL path
     const pathToTab = {
       '/trend-tool': 'trend-tool',
-      '/weekly-box-score': 'weekly-box-score',
       '/data-table': 'data-table'
     };
     return pathToTab[location.pathname] || 'data-table';
@@ -124,7 +123,6 @@ const FantasyDashboard = () => {
   useEffect(() => {
     const pathToTab = {
       '/trend-tool': 'trend-tool',
-      '/weekly-box-score': 'weekly-box-score',
       '/data-table': 'data-table',
       '/': 'data-table'
     };
@@ -1045,7 +1043,7 @@ const FantasyDashboard = () => {
           <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 shrink-0 z-10">
             <div className="flex items-center gap-4">
               <h1 className="text-xl font-bold text-gray-800">
-                {activeTab === 'trend-tool' ? 'Trend Tool' : activeTab === 'weekly-box-score' ? 'Weekly Box Score' : 'Player Optimizer'}
+                {activeTab === 'trend-tool' ? 'Trend Tool' : 'Player Optimizer'}
               </h1>
               {activeTab === 'data-table' && (
                 <div className="flex items-center bg-gray-100 rounded-md px-3 py-1.5 w-64">
@@ -1134,10 +1132,6 @@ const FantasyDashboard = () => {
                     />
                   </div>
                 </div>
-              </div>
-            ) : activeTab === 'weekly-box-score' ? (
-              <div className="flex-1 overflow-auto bg-white">
-                <WeeklyBoxScore />
               </div>
             ) : (
               <div className="flex h-full">
