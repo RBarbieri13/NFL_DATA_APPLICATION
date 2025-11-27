@@ -1,6 +1,54 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ChevronDown, ChevronRight, Settings, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Settings, X, Star } from 'lucide-react';
 import { getTeamLogo } from '../data/nflTeamLogos';
+
+// Helper function to get subtle blue background color for snap counts (relative to column)
+const getSnapBackgroundColor = (value, allValues) => {
+  if (!value || value <= 0 || !allValues || allValues.length === 0) return '';
+  
+  const validValues = allValues.filter(v => v && v > 0);
+  if (validValues.length === 0) return '';
+  
+  const min = Math.min(...validValues);
+  const max = Math.max(...validValues);
+  const range = max - min;
+  
+  if (range === 0) return 'rgba(59, 130, 246, 0.15)'; // Light blue for all same values
+  
+  // Calculate relative position (0 to 1)
+  const position = (value - min) / range;
+  
+  // Subtle blue scale: higher snaps = more blue, lower = more white
+  if (position >= 0.8) return 'rgba(59, 130, 246, 0.25)'; // Stronger blue
+  if (position >= 0.6) return 'rgba(59, 130, 246, 0.18)';
+  if (position >= 0.4) return 'rgba(59, 130, 246, 0.12)';
+  if (position >= 0.2) return 'rgba(59, 130, 246, 0.06)';
+  return ''; // Very low = white/no color
+};
+
+// Helper function to get subtle green/red background color for fantasy points (relative to column)
+const getFptsBackgroundColor = (value, allValues) => {
+  if (!value || value <= 0 || !allValues || allValues.length === 0) return '';
+  
+  const validValues = allValues.filter(v => v && v > 0);
+  if (validValues.length === 0) return '';
+  
+  const min = Math.min(...validValues);
+  const max = Math.max(...validValues);
+  const range = max - min;
+  
+  if (range === 0) return 'rgba(34, 197, 94, 0.15)'; // Light green for all same values
+  
+  // Calculate relative position (0 to 1)
+  const position = (value - min) / range;
+  
+  // Subtle green/red scale: higher FPTS = more green, lower = more red
+  if (position >= 0.8) return 'rgba(34, 197, 94, 0.25)'; // Strong green
+  if (position >= 0.6) return 'rgba(34, 197, 94, 0.15)'; // Light green
+  if (position >= 0.4) return 'rgba(234, 179, 8, 0.08)'; // Very subtle yellow
+  if (position >= 0.2) return 'rgba(239, 68, 68, 0.10)'; // Light red
+  return 'rgba(239, 68, 68, 0.18)'; // Stronger red for lowest
+};
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:10000';
 
@@ -338,6 +386,22 @@ const FantasyAnalyzer = () => {
   const [showColumnSelector, setShowColumnSelector] = useState(false);
   const columnSelectorRef = useRef(null);
 
+  // Favorite players state - tracks player IDs that are favorited
+  const [favoritePlayers, setFavoritePlayers] = useState(new Set());
+
+  // Toggle favorite status for a player
+  const toggleFavorite = useCallback((playerId) => {
+    setFavoritePlayers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(playerId)) {
+        newSet.delete(playerId);
+      } else {
+        newSet.add(playerId);
+      }
+      return newSet;
+    });
+  }, []);
+
   // Close column selector when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -631,6 +695,29 @@ const FantasyAnalyzer = () => {
     });
   }, [data, sortConfig]);
 
+  // Compute min/max values for snaps and FPTS per week for conditional formatting
+  const weeklyStats = useMemo(() => {
+    const stats = {};
+    weeksToShow.forEach(weekNum => {
+      const snapsValues = [];
+      const fptsValues = [];
+      
+      data.forEach(player => {
+        const weekData = player.weeks?.find(w => w.weekNum === weekNum);
+        if (weekData) {
+          if (weekData.misc?.num) snapsValues.push(weekData.misc.num);
+          if (weekData.misc?.fpts) fptsValues.push(weekData.misc.fpts);
+        }
+      });
+      
+      stats[weekNum] = {
+        snapsValues,
+        fptsValues
+      };
+    });
+    return stats;
+  }, [data, weeksToShow]);
+
   // Helper to render the weekly data cells for a single player row
   const renderWeeklyRowData = (playerWeeks) => {
     return weeksToShow.map((weekNum, weekIndex) => {
@@ -675,18 +762,32 @@ const FantasyAnalyzer = () => {
 
       const cells = [];
 
+      // Get conditional formatting colors for this week
+      const snapBgColor = getSnapBackgroundColor(weekData.misc?.num, weeklyStats[weekNum]?.snapsValues);
+      const fptsBgColor = getFptsBackgroundColor(weekData.misc?.fpts, weeklyStats[weekNum]?.fptsValues);
+
       // Summary stats (always visible based on visibility settings)
       if (visibleColumns.num) {
         cells.push(
-          <DataCell key={`${weekNum}-num`} className="bg-gray-100 font-semibold" width={colWidths.num}>
+          <DataCell 
+            key={`${weekNum}-num`} 
+            className="font-semibold" 
+            width={colWidths.num}
+            style={{ backgroundColor: snapBgColor || '#f3f4f6' }}
+          >
             {weekData.misc?.num || '-'}
           </DataCell>
         );
       }
       if (visibleColumns.fpts) {
-        const style = !isExpanded && !isLastWeek ? weekEndBorderStyle : {};
+        const baseStyle = !isExpanded && !isLastWeek ? weekEndBorderStyle : {};
         cells.push(
-          <DataCell key={`${weekNum}-fpts`} className="bg-gray-100 font-bold" width={colWidths.fpts} style={style}>
+          <DataCell 
+            key={`${weekNum}-fpts`} 
+            className="font-bold" 
+            width={colWidths.fpts} 
+            style={{ ...baseStyle, backgroundColor: fptsBgColor || '#f3f4f6' }}
+          >
             {weekData.misc?.fpts?.toFixed(1) || '-'}
           </DataCell>
         );
@@ -1146,6 +1247,22 @@ const FantasyAnalyzer = () => {
                     {/* Fixed Matchup Columns */}
                     <DataCell className="text-left font-bold" width={colWidths.player}>
                       <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(player.id || player.name);
+                          }}
+                          className="flex-shrink-0 p-0.5 hover:scale-110 transition-transform"
+                          title={favoritePlayers.has(player.id || player.name) ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                          <Star
+                            className={`w-3 h-3 ${
+                              favoritePlayers.has(player.id || player.name)
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'text-gray-300 hover:text-gray-400'
+                            }`}
+                          />
+                        </button>
                         <span className="truncate">{player.name}</span>
                         {getTeamLogo(player.team) && (
                           <img src={getTeamLogo(player.team)} alt={player.team} className="w-4 h-4 object-contain flex-shrink-0" />
