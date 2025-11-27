@@ -73,7 +73,11 @@ const MenuWiseSidebar = ({ activeRoute, onNavigate }) => {
       {/* Sidebar Header */}
       <div className="flex items-center justify-between px-3 py-3 border-b border-slate-700">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50 flex-shrink-0"></div>
+          <img 
+            src="/logo.png" 
+            alt="Logo" 
+            className={`object-contain flex-shrink-0 ${isCollapsed ? 'h-6 w-6' : 'h-8'}`}
+          />
         </div>
         <button
           onClick={toggleCollapse}
@@ -131,7 +135,8 @@ const MenuWiseSidebar = ({ activeRoute, onNavigate }) => {
       <div className="px-3 py-3 border-t border-slate-700 bg-slate-800/50">
         {!isCollapsed && (
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">NFL Dashboard v1.0</span>
+            <span className="text-xs text-slate-500">v1.0</span>
+            <img src="/logo.png" alt="Logo" className="h-5 object-contain opacity-60" />
           </div>
         )}
       </div>
