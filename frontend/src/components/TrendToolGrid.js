@@ -3,6 +3,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { getTeamLogo } from '../data/nflTeamLogos';
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -92,7 +93,18 @@ const TrendToolGrid = ({ data, startWeek, endWeek, isPPR }) => {
             pinned: 'left',
             width: 100,
             cellClass: 'text-xs flex items-center',
-            valueFormatter: (params) => params.value ? `vs ${params.value}` : '-'
+            cellRenderer: (params) => {
+              const opponent = params.value;
+              const opponentLogo = getTeamLogo(opponent);
+              return (
+                <div className="flex items-center gap-1">
+                  {opponentLogo && (
+                    <img src={opponentLogo} alt={opponent} className="w-4 h-4 object-contain" />
+                  )}
+                  <span>vs {opponent || '-'}</span>
+                </div>
+              );
+            }
           },
           {
             headerName: 'Price',
@@ -268,8 +280,9 @@ const TrendToolGrid = ({ data, startWeek, endWeek, isPPR }) => {
   const defaultColDef = useMemo(() => ({
     sortable: true,
     resizable: true,
-    filter: false,
-    suppressMenu: true,
+    filter: true,
+    floatingFilter: true,
+    suppressMenu: false,
     cellStyle: { borderRight: '1px solid #e5e7eb' }
   }), []);
 

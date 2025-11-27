@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { getTeamLogo } from '../data/nflTeamLogos';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:10000';
 
@@ -419,7 +420,14 @@ const FantasyAnalyzer = () => {
                     {/* Fixed Matchup Columns */}
                     <DataCell className="text-left font-bold">{player.name}</DataCell>
                     <DataCell>{player.pos}</DataCell>
-                    <DataCell className="text-[11px]">{player.opp}</DataCell>
+                    <DataCell className="text-[11px]">
+                      <div className="flex items-center gap-1 justify-center">
+                        {getTeamLogo(player.opp) && (
+                          <img src={getTeamLogo(player.opp)} alt={player.opp} className="w-4 h-4 object-contain" />
+                        )}
+                        <span>{player.opp}</span>
+                      </div>
+                    </DataCell>
                     <DataCell className="text-right">{formatCurrency(player.price)}</DataCell>
                     <DataCell className="font-bold">{player.proj?.toFixed(1) || '-'}</DataCell>
                     <DataCell className={`font-bold ${trend > 0 ? 'text-green-600' : trend < 0 ? 'text-red-600' : ''}`}>

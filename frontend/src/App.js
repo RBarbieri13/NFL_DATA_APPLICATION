@@ -16,10 +16,10 @@ import { toast } from 'sonner';
 import OptimizerFilter from './components/OptimizerFilter';
 import MenuWiseSidebar from './components/layout/MenuWiseSidebar';
 import TrendToolGrid from './components/TrendToolGrid';
-import WeeklyBoxScore from './components/WeeklyBoxScore';
 import FantasyAnalyzerDemo from './components/FantasyAnalyzerDemo';
 import Admin from './components/Admin';
 import AnalyzerFilters from './components/AnalyzerFilters';
+import { getTeamLogo } from './data/nflTeamLogos';
 import '@/App.css';
 
 // Register AG Grid modules
@@ -277,21 +277,27 @@ const FantasyDashboard = () => {
           headerName: 'Game',
           field: 'opponent',
           pinned: 'left',
-          width: 100,
+          width: 120,
           cellRenderer: (params) => {
             const opponent = params.value;
             const playerTeam = params.data.team;
             const week = params.data.week;
-
-            const score = `vs ${opponent}`;
+            const playerTeamLogo = getTeamLogo(playerTeam);
+            const opponentLogo = getTeamLogo(opponent);
 
             return (
-              <div className="py-1 px-2">
-                <div className="text-xs font-semibold text-gray-700">
-                  {score}
+              <div className="py-1 px-1 flex items-center gap-1">
+                <div className="flex items-center gap-1">
+                  {playerTeamLogo && (
+                    <img src={playerTeamLogo} alt={playerTeam} className="w-5 h-5 object-contain" />
+                  )}
+                  <span className="text-xs text-gray-500">vs</span>
+                  {opponentLogo && (
+                    <img src={opponentLogo} alt={opponent} className="w-5 h-5 object-contain" />
+                  )}
                 </div>
-                <div className="text-xs text-gray-500">
-                  Week {week}
+                <div className="text-xs text-gray-500 ml-1">
+                  Wk {week}
                 </div>
               </div>
             );
@@ -553,14 +559,15 @@ const FantasyDashboard = () => {
     }
   ], [isPPR, calculateFantasyPoints, getPerformanceColor, handlePlayerClick, favorites]);
 
-  // Default column configuration with tighter spacing - remove filter triangles
+  // Default column configuration with filtering and sorting enabled on all columns
   const defaultColDef = useMemo(() => ({
     sortable: true,
-    filter: false, // Remove filter triangles
+    filter: true,
+    floatingFilter: true,
     resizable: true,
     minWidth: 40,
     cellStyle: { padding: '4px 6px' },
-    suppressMenu: true // Remove column menu
+    suppressMenu: false
   }), []);
 
   // Grid options for clean layout
