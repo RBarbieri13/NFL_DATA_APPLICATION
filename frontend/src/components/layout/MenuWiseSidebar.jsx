@@ -55,7 +55,6 @@ const MenuWiseSidebar = ({ activeRoute, onNavigate }) => {
   const navItems = [
     { to: '/data-table', icon: BarChart3, label: 'Data Table' },
     { to: '/trend-tool', icon: TrendingUp, label: 'Trend Tool' },
-    { to: '/weekly-box-score', icon: Table2, label: 'Weekly Box Score' },
     { to: '/fantasy-analyzer', icon: Table2, label: 'Fantasy Analyzer' },
   ];
 
