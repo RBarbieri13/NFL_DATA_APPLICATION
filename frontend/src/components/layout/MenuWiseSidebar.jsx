@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { BarChart3, TrendingUp, Table2, Settings, ChevronLeft, ChevronRight, GripVertical } from 'lucide-react';
 
 const MIN_WIDTH = 60;  // Collapsed (icons only)
-const DEFAULT_WIDTH = 240;
+const DEFAULT_WIDTH = 160;  // Just wide enough for "Fantasy Analyzer"
 const MAX_WIDTH = 320;
 
 const MenuWiseSidebar = ({ activeRoute, onNavigate }) => {
@@ -54,7 +54,7 @@ const MenuWiseSidebar = ({ activeRoute, onNavigate }) => {
 
   const navItems = [
     { to: '/data-table', icon: BarChart3, label: 'Data Table' },
-    { to: '/trend-tool', icon: TrendingUp, label: 'Trend Tool' },
+    // Trend Tool hidden but code preserved: { to: '/trend-tool', icon: TrendingUp, label: 'Trend Tool' },
     { to: '/fantasy-analyzer', icon: Table2, label: 'Fantasy Analyzer' },
   ];
 
@@ -74,11 +74,6 @@ const MenuWiseSidebar = ({ activeRoute, onNavigate }) => {
       <div className="flex items-center justify-between px-3 py-3 border-b border-slate-700">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50 flex-shrink-0"></div>
-          {!isCollapsed && (
-            <span className="font-semibold text-slate-200 text-sm whitespace-nowrap overflow-hidden">
-              MenuWise
-            </span>
-          )}
         </div>
         <button
           onClick={toggleCollapse}
