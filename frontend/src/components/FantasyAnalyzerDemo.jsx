@@ -9,13 +9,11 @@ const FantasyAnalyzerDemo = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* MenuWise Sidebar */}
-      <div className="w-72 flex-shrink-0">
-        <MenuWiseSidebar
-          activeRoute={location.pathname}
-          onNavigate={(path) => navigate(path)}
-        />
-      </div>
+      {/* MenuWise Sidebar - No wrapper div, let sidebar control its own width */}
+      <MenuWiseSidebar
+        activeRoute={location.pathname}
+        onNavigate={(path) => navigate(path)}
+      />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -45,11 +43,9 @@ const FantasyAnalyzerDemo = () => {
           </div>
         </div>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-auto bg-gray-50">
-          <div className="p-4">
-            <FantasyAnalyzer />
-          </div>
+        {/* Content Area - No extra padding wrapper */}
+        <main className="flex-1 overflow-auto bg-white">
+          <FantasyAnalyzer />
         </main>
       </div>
     </div>

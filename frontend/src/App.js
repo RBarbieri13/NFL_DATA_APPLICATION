@@ -818,10 +818,18 @@ const FantasyDashboard = () => {
               player_name: player.player_name,
               position: player.position,
               team: player.team,
+              opponent: player.opponent,
+              dk_salary: player.dk_salary,
+              proj_points: null,
               weeks: {}
             });
           }
-          playerMap.get(key).weeks[weekNum] = {
+          // Update opponent and salary to latest week's data
+          const playerEntry = playerMap.get(key);
+          playerEntry.opponent = player.opponent;
+          playerEntry.dk_salary = player.dk_salary || playerEntry.dk_salary;
+
+          playerEntry.weeks[weekNum] = {
             ...player,
             fantasy_points: parseFloat(calculateFantasyPoints(player)) || 0
           };

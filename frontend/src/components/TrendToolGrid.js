@@ -74,11 +74,20 @@ const TrendToolGrid = ({ data, startWeek, endWeek, isPPR }) => {
             headerName: 'Player',
             field: 'player_name',
             pinned: 'left',
-            width: 140,
+            width: 160,
             cellClass: 'font-bold text-gray-800 flex items-center',
-            cellRenderer: (params) => (
-              <div className="truncate">{params.value}</div>
-            )
+            cellRenderer: (params) => {
+              const team = params.data.team;
+              const teamLogo = getTeamLogo(team);
+              return (
+                <div className="flex items-center gap-1 truncate">
+                  <span>{params.value}</span>
+                  {teamLogo && (
+                    <img src={teamLogo} alt={team} className="w-4 h-4 object-contain flex-shrink-0" />
+                  )}
+                </div>
+              );
+            }
           },
           {
             headerName: 'Pos',
@@ -281,7 +290,7 @@ const TrendToolGrid = ({ data, startWeek, endWeek, isPPR }) => {
     sortable: true,
     resizable: true,
     filter: true,
-    floatingFilter: true,
+    floatingFilter: false,
     suppressMenu: false,
     cellStyle: { borderRight: '1px solid #e5e7eb' }
   }), []);
@@ -311,24 +320,27 @@ const TrendToolGrid = ({ data, startWeek, endWeek, isPPR }) => {
         }
         
         .trend-grid .passing-header {
-            background-color: #1e3a8a !important; /* Dark Blue */
+            background-color: #dbeafe !important; /* Light Blue - Pastel */
+            border-bottom: 2px solid #3b82f6 !important;
         }
         .trend-grid .passing-header .ag-header-group-cell-label {
-            color: white !important;
+            color: #1e40af !important;
         }
-        
+
         .trend-grid .rushing-header {
-            background-color: #15803d !important; /* Green */
+            background-color: #dcfce7 !important; /* Light Green - Pastel */
+            border-bottom: 2px solid #10b981 !important;
         }
         .trend-grid .rushing-header .ag-header-group-cell-label {
-            color: white !important;
+            color: #15803d !important;
         }
-        
+
         .trend-grid .receiving-header {
-            background-color: #581c87 !important; /* Purple */
+            background-color: #f3e8ff !important; /* Light Purple - Pastel */
+            border-bottom: 2px solid #8b5cf6 !important;
         }
         .trend-grid .receiving-header .ag-header-group-cell-label {
-            color: white !important;
+            color: #7c3aed !important;
         }
 
         /* Borders */

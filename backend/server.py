@@ -2887,13 +2887,14 @@ async def get_analyzer_data(
                 ws.receiving_tds,
                 ws.targets,
                 ws.fantasy_points,
-                COALESCE(CAST(sc.offense_pct AS DOUBLE), CAST(ws.snap_percentage AS DOUBLE) * 100, 0.0) as snap_percentage,
+                COALESCE(CAST(sc.offense_snaps AS INTEGER), 0) as snap_percentage,
                 COALESCE(CAST(dp.salary AS INTEGER), CAST(ws.dk_salary AS INTEGER), 0) as dk_salary
             FROM weekly_stats ws
             LEFT JOIN skill_snap_counts sc ON (
-                LOWER(TRIM(ws.player_name)) = LOWER(TRIM(sc.player_name))
-                AND ws.season = sc.season AND ws.week = sc.week
-            )
+                (LOWER(TRIM(ws.player_name)) = LOWER(TRIM(sc.player_name))) OR
+                (LOWER(TRIM(REGEXP_REPLACE(REGEXP_REPLACE(ws.player_name, '\\s+(Jr\\.?|Sr\\.?|III|II|IV)\\s*$', '', 'i'), '\\.', '', 'g'))) =
+                 LOWER(TRIM(REGEXP_REPLACE(REGEXP_REPLACE(sc.player_name, '\\s+(Jr\\.?|Sr\\.?|III|II|IV)\\s*$', '', 'i'), '\\.', '', 'g'))))
+            ) AND ws.season = sc.season AND ws.week = sc.week
             LEFT JOIN draftkings_pricing dp ON (
                 LOWER(TRIM(ws.player_name)) = LOWER(TRIM(dp.player_name))
                 AND ws.team = dp.team
