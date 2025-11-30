@@ -2930,7 +2930,8 @@ async def get_analyzer_data(
                 "weekNum": row[4],
                 "misc": {
                     "num": int(row[16]) if row[16] else 0,  # snap_percentage
-                    "fpts": float(row[15]) if row[15] else 0  # fantasy_points
+                    "fpts": float(row[15]) if row[15] else 0,  # fantasy_points
+                    "dkPrice": int(row[17]) if row[17] and row[17] > 0 else 0  # DraftKings salary
                 },
                 "passing": {
                     "cmpAtt": "-",  # No attempt data in our schema

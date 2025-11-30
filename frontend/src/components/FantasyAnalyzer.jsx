@@ -69,6 +69,7 @@ const DEFAULT_COL_WIDTHS = {
   proj: 50,
   trend: 115,
   num: 35,
+  dkPrice: 50,
   fpts: 45,
   cmpAtt: 55,
   passYds: 40,
@@ -86,6 +87,7 @@ const DEFAULT_COL_WIDTHS = {
 // Minimum column widths for auto-resize
 const MIN_COL_WIDTHS = {
   num: 25,
+  dkPrice: 40,
   fpts: 35,
   cmpAtt: 45,
   passYds: 30,
@@ -106,6 +108,7 @@ const COLUMN_CATEGORIES = {
     label: 'Summary',
     columns: [
       { key: 'num', label: '#' },
+      { key: 'dkPrice', label: 'DK$' },
       { key: 'fpts', label: 'FPTS' }
     ]
   },
@@ -370,6 +373,7 @@ const FantasyAnalyzer = () => {
   // Column visibility state
   const [visibleColumns, setVisibleColumns] = useState({
     num: true,
+    dkPrice: true,
     fpts: true,
     cmpAtt: true,
     passYds: true,
@@ -438,7 +442,7 @@ const FantasyAnalyzer = () => {
       }));
     } else {
       // All columns visible - distribute delta across all visible stat columns
-      const visibleStatCols = ['num', 'fpts', 'cmpAtt', 'passYds', 'passTd', 'int', 'rushAtt', 'rushYds', 'rushTd', 'tgts', 'rec', 'recYds', 'recTd']
+      const visibleStatCols = ['num', 'dkPrice', 'fpts', 'cmpAtt', 'passYds', 'passTd', 'int', 'rushAtt', 'rushYds', 'rushTd', 'tgts', 'rec', 'recYds', 'recTd']
         .filter(key => visibleColumns[key]);
       const deltaPerCol = delta / visibleStatCols.length;
 
@@ -464,6 +468,7 @@ const FantasyAnalyzer = () => {
   const getVisibleStatColsCount = () => {
     let count = 0;
     if (visibleColumns.num) count++;
+    if (visibleColumns.dkPrice) count++;
     if (visibleColumns.fpts) count++;
     if (visibleColumns.cmpAtt) count++;
     if (visibleColumns.passYds) count++;
@@ -485,6 +490,7 @@ const FantasyAnalyzer = () => {
       // Just summary columns
       let count = 0;
       if (visibleColumns.num) count++;
+      if (visibleColumns.dkPrice) count++;
       if (visibleColumns.fpts) count++;
       return Math.max(1, count);
     }
@@ -495,7 +501,7 @@ const FantasyAnalyzer = () => {
   const getVisiblePassingCols = () => ['cmpAtt', 'passYds', 'passTd', 'int'].filter(k => visibleColumns[k]).length;
   const getVisibleRushingCols = () => ['rushAtt', 'rushYds', 'rushTd'].filter(k => visibleColumns[k]).length;
   const getVisibleReceivingCols = () => ['tgts', 'rec', 'recYds', 'recTd'].filter(k => visibleColumns[k]).length;
-  const getVisibleSummaryCols = () => ['num', 'fpts'].filter(k => visibleColumns[k]).length;
+  const getVisibleSummaryCols = () => ['num', 'dkPrice', 'fpts'].filter(k => visibleColumns[k]).length;
 
   // Calculate weeks to show
   const weeksToShow = useMemo(() => {
@@ -638,6 +644,10 @@ const FantasyAnalyzer = () => {
             aVal = aWeek?.misc?.num || 0;
             bVal = bWeek?.misc?.num || 0;
             break;
+          case 'dkPrice':
+            aVal = aWeek?.misc?.dkPrice || 0;
+            bVal = bWeek?.misc?.dkPrice || 0;
+            break;
           case 'fpts':
             aVal = aWeek?.misc?.fpts || 0;
             bVal = bWeek?.misc?.fpts || 0;
@@ -738,6 +748,7 @@ const FantasyAnalyzer = () => {
         const cells = [];
         // Summary columns
         if (visibleColumns.num) cells.push(<DataCell key={`empty-${weekNum}-num`} className="bg-gray-100">-</DataCell>);
+        if (visibleColumns.dkPrice) cells.push(<DataCell key={`empty-${weekNum}-dkPrice`} className="bg-gray-100">-</DataCell>);
         if (visibleColumns.fpts) {
           const style = !isExpanded && !isLastWeek ? weekEndBorderStyle : {};
           cells.push(<DataCell key={`empty-${weekNum}-fpts`} className="bg-gray-100" style={style}>-</DataCell>);
@@ -782,6 +793,18 @@ const FantasyAnalyzer = () => {
             style={{ backgroundColor: snapBgColor || '#f3f4f6' }}
           >
             {weekData.misc?.num || '-'}
+          </DataCell>
+        );
+      }
+      if (visibleColumns.dkPrice) {
+        const dkPrice = weekData.misc?.dkPrice;
+        cells.push(
+          <DataCell 
+            key={`${weekNum}-dkPrice`} 
+            className="font-semibold text-green-700" 
+            width={colWidths.dkPrice}
+          >
+            {dkPrice && dkPrice > 0 ? `$${(dkPrice / 1000).toFixed(1)}k` : '-'}
           </DataCell>
         );
       }
@@ -1142,6 +1165,18 @@ const FantasyAnalyzer = () => {
                       onClick={() => handleSort('num', week)}
                     >
                       #
+                    </ClickableHeaderCell>
+                  );
+                }
+                if (visibleColumns.dkPrice) {
+                  cells.push(
+                    <ClickableHeaderCell
+                      key={`${week}-dkPrice`}
+                      className="bg-gray-500 text-white"
+                      width={colWidths.dkPrice}
+                      onClick={() => handleSort('dkPrice', week)}
+                    >
+                      DK$
                     </ClickableHeaderCell>
                   );
                 }
