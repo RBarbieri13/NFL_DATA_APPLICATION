@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ChevronDown, ChevronRight, Settings, X, Star } from 'lucide-react';
 import { getTeamLogo } from '../data/nflTeamLogos';
+import { TrendColumnHeader, TrendBarCell, STAT_OPTIONS } from './grid/trend';
 
 // Helper function to get subtle blue background color for snap counts (relative to column)
 const getSnapBackgroundColor = (value, allValues) => {
@@ -66,6 +67,7 @@ const DEFAULT_COL_WIDTHS = {
   opp: 70,
   price: 60,
   proj: 50,
+  trend: 115,
   num: 35,
   fpts: 45,
   cmpAtt: 55,
@@ -388,6 +390,10 @@ const FantasyAnalyzer = () => {
 
   // Favorite players state - tracks player IDs that are favorited
   const [favoritePlayers, setFavoritePlayers] = useState(new Set());
+
+  // Trend column config state
+  const [trendStat, setTrendStat] = useState('fpts');
+  const [trendWeeks, setTrendWeeks] = useState(4);
 
   // Toggle favorite status for a player
   const toggleFavorite = useCallback((playerId) => {
@@ -975,7 +981,7 @@ const FantasyAnalyzer = () => {
           <thead>
             {/* Header Row 1: Top Level Categories with Week Titles */}
             <tr>
-              <ClickableHeaderCell colSpan={5} className="bg-gray-300 text-black">Matchup</ClickableHeaderCell>
+              <ClickableHeaderCell colSpan={6} className="bg-gray-300 text-black">Matchup</ClickableHeaderCell>
               {weeksToShow.map((week, weekIndex) => {
                 const isLastWeek = weekIndex === weeksToShow.length - 1;
                 return (
@@ -1054,6 +1060,24 @@ const FantasyAnalyzer = () => {
               >
                 Proj.
               </ResizableHeaderCell>
+              {/* Trend Column Header with dropdowns */}
+              <th
+                rowSpan={2}
+                className="border border-gray-400 bg-slate-800 text-white"
+                style={{
+                  width: `${colWidths.trend}px`,
+                  minWidth: `${colWidths.trend}px`,
+                  padding: '2px 4px',
+                  verticalAlign: 'middle'
+                }}
+              >
+                <TrendColumnHeader
+                  selectedStat={trendStat}
+                  selectedWeeks={trendWeeks}
+                  onStatChange={setTrendStat}
+                  onWeeksChange={setTrendWeeks}
+                />
+              </th>
 
               {/* Repeated Week Headers */}
               {weeksToShow.map((week, weekIndex) => {
@@ -1233,7 +1257,7 @@ const FantasyAnalyzer = () => {
           <tbody>
             {sortedData.length === 0 && !loading ? (
               <tr>
-                <td colSpan={5 + weeksToShow.reduce((sum, week) => sum + getStatsPerWeekCols(week), 0)} className="text-center py-8 text-gray-500">
+                <td colSpan={6 + weeksToShow.reduce((sum, week) => sum + getStatsPerWeekCols(week), 0)} className="text-center py-8 text-gray-500">
                   No data available. Adjust filters or check API connection.
                 </td>
               </tr>
@@ -1280,6 +1304,22 @@ const FantasyAnalyzer = () => {
                     </DataCell>
                     <DataCell className="text-right" width={colWidths.price}>{formatCurrency(player.price)}</DataCell>
                     <DataCell className="font-bold" width={colWidths.proj}>{player.proj?.toFixed(1) || '-'}</DataCell>
+                    {/* Trend Column */}
+                    <td
+                      className="border border-gray-300 bg-slate-800"
+                      style={{
+                        width: `${colWidths.trend}px`,
+                        minWidth: `${colWidths.trend}px`,
+                        padding: 0,
+                      }}
+                    >
+                      <TrendBarCell
+                        player={player}
+                        selectedStat={trendStat}
+                        selectedWeeks={trendWeeks}
+                        weeksToShow={weeksToShow}
+                      />
+                    </td>
 
                     {/* Scrollable Weekly Data columns */}
                     {renderWeeklyRowData(player.weeks || [])}
