@@ -70,18 +70,18 @@ const MenuWiseSidebar = ({ activeRoute, onNavigate }) => {
         transition: isResizing ? 'none' : 'width 0.2s ease-in-out'
       }}
     >
-      {/* Sidebar Header */}
-      <div className="flex items-center justify-between px-3 py-3 border-b border-slate-700">
-        <div className="flex items-center gap-2">
-          <img 
-            src="/logo.png" 
-            alt="Logo" 
-            className={`object-contain flex-shrink-0 ${isCollapsed ? 'h-6 w-6' : 'h-8'}`}
+      {/* Sidebar Header with Rube Logo */}
+      <div className="flex items-center justify-between px-2 py-2 border-b border-slate-700">
+        <div className="flex items-center flex-1 min-w-0">
+          <img
+            src="/logo.png"
+            alt="Rube"
+            className={`object-contain flex-shrink-0 ${isCollapsed ? 'h-10 w-10' : 'h-12'}`}
           />
         </div>
         <button
           onClick={toggleCollapse}
-          className="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
+          className="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors flex-shrink-0"
           title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -132,11 +132,10 @@ const MenuWiseSidebar = ({ activeRoute, onNavigate }) => {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-3 border-t border-slate-700 bg-slate-800/50">
+      <div className="px-3 py-2 border-t border-slate-700 bg-slate-800/50">
         {!isCollapsed && (
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-center">
             <span className="text-xs text-slate-500">v1.0</span>
-            <img src="/logo.png" alt="Logo" className="h-5 object-contain opacity-60" />
           </div>
         )}
       </div>
