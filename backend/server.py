@@ -23,6 +23,10 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import re
 
+# Import ETL module for Ball Don't Lie API integration
+import etl
+from balldontlie import BallDontLieClient, get_client as get_bdl_client
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -3101,6 +3105,292 @@ async def get_injury_summary(refresh: bool = Query(False, description="Force ref
     except Exception as e:
         logging.error(f"Error fetching injury summary: {e}")
         raise HTTPException(status_code=500, detail=f"Error fetching injury summary: {str(e)}")
+
+
+# ==================== Admin ETL Endpoints ====================
+# These endpoints allow manual triggering of ETL jobs for data loading
+
+@api_router.post("/admin/etl/init-schema")
+async def admin_init_schema():
+    """Initialize the new Ball Don't Lie database schema."""
+    try:
+        etl_conn = etl.get_db_connection()
+        etl.init_new_schema(etl_conn)
+        etl_conn.close()
+        return {"success": True, "message": "New schema initialized successfully"}
+    except Exception as e:
+        logging.error(f"Error initializing schema: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/etl/backfill")
+async def admin_backfill_history(
+    start_season: int = Query(default=2020, description="Start season for backfill"),
+    end_season: int = Query(default=2024, description="End season for backfill")
+):
+    """
+    Run historical backfill from Ball Don't Lie API.
+    This is a one-time operation that loads all historical data.
+    WARNING: This can take 1-2 hours due to API rate limits.
+    """
+    try:
+        logging.info(f"Starting historical backfill for seasons {start_season}-{end_season}")
+        result = await asyncio.get_event_loop().run_in_executor(
+            executor,
+            lambda: etl.run_backfill_history(start_season, end_season)
+        )
+        return result
+    except Exception as e:
+        logging.error(f"Error running backfill: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/etl/update-week")
+async def admin_update_current_week(
+    season: int = Query(default=2025, description="Season to update"),
+    week: int = Query(default=1, description="Week to update")
+):
+    """
+    Update data for a specific week.
+    Use this for weekly updates during the season.
+    """
+    try:
+        logging.info(f"Updating data for season {season}, week {week}")
+        result = await asyncio.get_event_loop().run_in_executor(
+            executor,
+            lambda: etl.run_update_current_week(season, week)
+        )
+        return result
+    except Exception as e:
+        logging.error(f"Error updating week: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/etl/refresh-injuries")
+async def admin_refresh_injuries():
+    """
+    Refresh current injuries from Ball Don't Lie API.
+    This should be run every 15 minutes for up-to-date injury data.
+    """
+    try:
+        logging.info("Refreshing injuries from Ball Don't Lie API")
+        result = await asyncio.get_event_loop().run_in_executor(
+            executor,
+            etl.run_refresh_injuries
+        )
+        return result
+    except Exception as e:
+        logging.error(f"Error refreshing injuries: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/etl/refresh-rosters")
+async def admin_refresh_rosters():
+    """
+    Refresh team rosters from Ball Don't Lie API.
+    This should be run weekly to keep roster data current.
+    """
+    try:
+        logging.info("Refreshing rosters from Ball Don't Lie API")
+        result = await asyncio.get_event_loop().run_in_executor(
+            executor,
+            etl.run_refresh_rosters
+        )
+        return result
+    except Exception as e:
+        logging.error(f"Error refreshing rosters: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/etl/refresh-depth-charts")
+async def admin_refresh_depth_charts(
+    season: int = Query(default=2025, description="Season to refresh depth charts for")
+):
+    """
+    Refresh depth charts from nflreadpy.
+    This should be run weekly to keep depth chart data current.
+    """
+    try:
+        logging.info(f"Refreshing depth charts for season {season}")
+        result = await asyncio.get_event_loop().run_in_executor(
+            executor,
+            lambda: etl.run_refresh_depth_charts(season)
+        )
+        return result
+    except Exception as e:
+        logging.error(f"Error refreshing depth charts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/etl/status")
+async def admin_etl_status():
+    """
+    Get the status of ETL tables and data counts.
+    """
+    try:
+        status = {}
+        
+        # Check Ball Don't Lie tables
+        bdl_tables = ['bdl_teams', 'bdl_players', 'bdl_games', 'bdl_player_game_stats', 
+                      'current_injuries', 'team_rosters', 'depth_charts']
+        
+        for table in bdl_tables:
+            try:
+                result = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+                status[table] = result[0] if result else 0
+            except Exception:
+                status[table] = "table not found"
+        
+        # Check existing tables
+        existing_tables = ['weekly_stats', 'snap_counts', 'draftkings_pricing', 'players']
+        for table in existing_tables:
+            try:
+                result = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+                status[table] = result[0] if result else 0
+            except Exception:
+                status[table] = "table not found"
+        
+        # Get season/week breakdown for weekly_stats
+        try:
+            seasons_result = conn.execute("""
+                SELECT season, COUNT(*) as count 
+                FROM weekly_stats 
+                GROUP BY season 
+                ORDER BY season DESC
+            """).fetchall()
+            status['weekly_stats_by_season'] = {row[0]: row[1] for row in seasons_result}
+        except Exception:
+            status['weekly_stats_by_season'] = {}
+        
+        return {"success": True, "status": status}
+    except Exception as e:
+        logging.error(f"Error getting ETL status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/bdl/test-connection")
+async def admin_test_bdl_connection():
+    """
+    Test the Ball Don't Lie API connection.
+    """
+    try:
+        client = get_bdl_client()
+        success = client.test_connection()
+        
+        if success:
+            teams = client.get_teams()
+            return {
+                "success": True,
+                "message": "Ball Don't Lie API connection successful",
+                "teams_count": len(teams)
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Ball Don't Lie API connection failed"
+            }
+    except Exception as e:
+        logging.error(f"Error testing Ball Don't Lie connection: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/depth-charts")
+async def get_depth_charts(
+    team: Optional[str] = Query(default=None, description="Filter by team abbreviation"),
+    season: int = Query(default=2025, description="Season"),
+    week: Optional[int] = Query(default=None, description="Week (defaults to latest)")
+):
+    """
+    Get depth chart data for teams.
+    """
+    try:
+        # Get the latest week if not specified
+        if week is None:
+            result = conn.execute("""
+                SELECT MAX(week) FROM depth_charts WHERE season = ?
+            """, [season]).fetchone()
+            week = result[0] if result and result[0] else 1
+        
+        query = """
+            SELECT team, position, depth_position, depth_order, player_name, 
+                   gsis_id, jersey_number, formation
+            FROM depth_charts
+            WHERE season = ? AND week = ?
+        """
+        params = [season, week]
+        
+        if team:
+            query += " AND team = ?"
+            params.append(team)
+        
+        query += " ORDER BY team, formation, position, depth_order"
+        
+        results = conn.execute(query, params).fetchall()
+        
+        depth_charts = []
+        for row in results:
+            depth_charts.append({
+                "team": row[0],
+                "position": row[1],
+                "depth_position": row[2],
+                "depth_order": row[3],
+                "player_name": row[4],
+                "gsis_id": row[5],
+                "jersey_number": row[6],
+                "formation": row[7]
+            })
+        
+        return {
+            "success": True,
+            "season": season,
+            "week": week,
+            "count": len(depth_charts),
+            "data": depth_charts
+        }
+    except Exception as e:
+        logging.error(f"Error fetching depth charts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/rosters")
+async def get_rosters(
+    team: Optional[str] = Query(default=None, description="Filter by team abbreviation"),
+    position: Optional[str] = Query(default=None, description="Filter by position")
+):
+    """
+    Get team roster data.
+    """
+    try:
+        query = "SELECT * FROM team_rosters WHERE 1=1"
+        params = []
+        
+        if team:
+            query += " AND team = ?"
+            params.append(team)
+        
+        if position:
+            query += " AND position = ?"
+            params.append(position)
+        
+        query += " ORDER BY team, position, player_name"
+        
+        results = conn.execute(query, params).fetchall()
+        
+        # Get column names
+        columns = [desc[0] for desc in conn.execute("SELECT * FROM team_rosters LIMIT 0").description]
+        
+        rosters = []
+        for row in results:
+            rosters.append(dict(zip(columns, row)))
+        
+        return {
+            "success": True,
+            "count": len(rosters),
+            "data": rosters
+        }
+    except Exception as e:
+        logging.error(f"Error fetching rosters: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Initialize database on startup
