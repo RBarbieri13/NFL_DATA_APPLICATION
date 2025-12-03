@@ -1,79 +1,100 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 
 /**
- * TrendBarChart - SVG mini bar chart for displaying trends over weeks
+ * TrendBarChart - Compact SVG bar chart with magnified relative scaling
+ * Bars are scaled relative to min/max within the dataset to show oscillations clearly
+ * Week-to-week color coding: green for increase, red for decrease from previous week
  *
  * @param {number[]} values - Array of values (e.g., FPTS per week)
- * @param {number} width - Chart width (default 56)
+ * @param {number} width - Chart width (default 70)
  * @param {number} height - Chart height (default 28)
  */
-const TrendBarChart = memo(({ values = [], width = 56, height = 28 }) => {
-  if (!values || values.length < 2) {
-    return <span className="text-gray-400 text-xs">-</span>;
-  }
-
-  const barWidth = 10;
-  const barGap = 4;
-  const paddingTop = 8;     // Room for labels
-  const paddingBottom = 4;
-  const chartHeight = height - paddingTop - paddingBottom;
-
-  // Filter out null/undefined values for calculations
-  const validValues = values.filter(v => v != null && !isNaN(v));
-  if (validValues.length < 2) {
-    return <span className="text-gray-400 text-xs">-</span>;
-  }
-
-  const minVal = Math.min(...validValues);
-  const maxVal = Math.max(...validValues);
-  const lowIdx = values.indexOf(minVal);
-
-  // Calculate bar height with minimum visibility
-  const scaleHeight = (val) => {
-    if (val == null || isNaN(val)) return 0;
-    const range = maxVal - minVal || 1;
-    const normalized = (val - minVal) / range;
-    return Math.max(4, normalized * chartHeight); // min 4px height
-  };
-
-  // Format value for display - shorter format for small numbers
-  const formatValue = (val) => {
-    if (val == null || isNaN(val)) return '';
-    if (val >= 100) return Math.round(val).toString();
-    if (val >= 10) return val.toFixed(1);
-    return val.toFixed(1);
-  };
-
-  // Get bar color based on comparison to previous week
-  const getBarColor = (val, index) => {
-    if (index === 0) return '#3b82f6'; // First bar is neutral blue
-
-    // Find previous valid value
-    let prevVal = null;
-    for (let j = index - 1; j >= 0; j--) {
-      if (values[j] != null && !isNaN(values[j])) {
-        prevVal = values[j];
-        break;
-      }
+const TrendBarChart = memo(({ values = [], width = 70, height = 28 }) => {
+  const analysis = useMemo(() => {
+    if (!values || values.length < 2) {
+      return null;
     }
 
-    if (prevVal === null) return '#3b82f6'; // No previous value, use neutral
-    if (val > prevVal) return '#22c55e'; // Green - increased
-    if (val < prevVal) return '#ef4444'; // Red - decreased
-    return '#3b82f6'; // Blue - same value
-  };
+    // Filter out null/undefined values for calculations
+    const validValues = values.filter(v => v != null && !isNaN(v));
+    if (validValues.length < 2) {
+      return null;
+    }
 
-  // Get label color matching bar color
-  const getLabelColor = (val, index) => {
-    const barColor = getBarColor(val, index);
-    if (barColor === '#22c55e') return '#22c55e'; // Green
-    if (barColor === '#ef4444') return '#ef4444'; // Red
-    return '#9ca3af'; // Gray for neutral
-  };
+    const min = Math.min(...validValues);
+    const max = Math.max(...validValues);
+    const range = max - min || 1;
+
+    // Determine week-to-week changes for coloring
+    const weekChanges = values.map((v, i) => {
+      if (v == null || isNaN(v)) return 'null';
+      if (i === 0) return 'neutral';
+
+      // Find previous valid value
+      let prevVal = null;
+      for (let j = i - 1; j >= 0; j--) {
+        if (values[j] != null && !isNaN(values[j])) {
+          prevVal = values[j];
+          break;
+        }
+      }
+
+      if (prevVal === null) return 'neutral';
+      if (v > prevVal) return 'positive';
+      if (v < prevVal) return 'negative';
+      return 'neutral';
+    });
+
+    return {
+      min,
+      max,
+      range,
+      weekChanges,
+      validValues,
+    };
+  }, [values]);
+
+  if (!analysis) {
+    return <span className="text-gray-400 text-xs">-</span>;
+  }
+
+  const { min, range, weekChanges } = analysis;
+
+  // Compact layout calculations
+  const barWidth = 14;
+  const barGap = 2;
+  const paddingTop = 10;    // Room for value labels
+  const paddingBottom = 2;
+  const paddingX = 1;
+  const chartHeight = height - paddingTop - paddingBottom;
+  const minBarHeight = 4;
 
   // Calculate total width needed
-  const totalWidth = values.length * barWidth + (values.length - 1) * barGap;
-  const startX = (width - totalWidth) / 2; // Center the bars
+  const validBarCount = values.filter(v => v != null && !isNaN(v)).length;
+  const totalBarsWidth = validBarCount * barWidth + (validBarCount - 1) * barGap;
+  const startX = Math.max(paddingX, (width - totalBarsWidth) / 2);
+
+  // Get bar height - scaled relative to min/max for magnified oscillations
+  const getBarHeight = (val) => {
+    if (val == null || isNaN(val)) return 0;
+    const normalized = (val - min) / range;
+    return Math.max(minBarHeight, normalized * chartHeight);
+  };
+
+  // Get bar color based on week-to-week change
+  const getBarColor = (weekChange) => {
+    if (weekChange === 'positive') return '#14b8a6'; // Teal for increase
+    if (weekChange === 'negative') return '#f87171'; // Red for decrease
+    return '#14b8a6'; // Default teal for neutral/first
+  };
+
+  // Format value compactly
+  const formatValue = (val) => {
+    if (val == null || isNaN(val)) return '';
+    return Math.round(val).toString();
+  };
+
+  let barIndex = 0;
 
   return (
     <svg
@@ -85,16 +106,18 @@ const TrendBarChart = memo(({ values = [], width = 56, height = 28 }) => {
       {values.map((val, i) => {
         if (val == null || isNaN(val)) return null;
 
-        const barH = scaleHeight(val);
-        const x = startX + i * (barWidth + barGap);
+        const currentBarIndex = barIndex;
+        barIndex++;
+
+        const barH = getBarHeight(val);
+        const x = startX + currentBarIndex * (barWidth + barGap);
         const y = height - barH - paddingBottom;
-        const isLow = i === lowIdx && minVal !== maxVal;
-        const barColor = getBarColor(val, i);
-        const labelColor = getLabelColor(val, i);
+        const barColor = getBarColor(weekChanges[i]);
+        const valueText = formatValue(val);
 
         return (
           <g key={i}>
-            {/* Bar */}
+            {/* Bar with slight rounded corners */}
             <rect
               x={x}
               y={y}
@@ -105,29 +128,17 @@ const TrendBarChart = memo(({ values = [], width = 56, height = 28 }) => {
               fill={barColor}
             />
 
-            {/* Underline for lowest week */}
-            {isLow && (
-              <rect
-                x={x}
-                y={height - paddingBottom + 1}
-                width={barWidth}
-                height={2}
-                rx={1}
-                fill="#ef4444"
-              />
-            )}
-
-            {/* Value label above each bar */}
+            {/* Value label above bar */}
             <text
               x={x + barWidth / 2}
-              y={y - 1}
+              y={y - 2}
               textAnchor="middle"
-              fill={labelColor}
-              fontSize={6}
-              fontWeight={barColor !== '#3b82f6' ? 600 : 400}
+              fill="#374151"
+              fontSize={8}
+              fontWeight={600}
               fontFamily="Inter, system-ui, sans-serif"
             >
-              {formatValue(val)}
+              {valueText}
             </text>
           </g>
         );

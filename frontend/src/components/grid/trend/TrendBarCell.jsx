@@ -89,13 +89,13 @@ const TrendBarCell = memo(({ player, selectedStat = 'fpts', selectedWeeks = 4, w
 
   return (
     <div
-      className="flex items-center justify-center gap-1"
+      className="flex items-center justify-end gap-1"
       style={{
         padding: '2px 4px',
         height: '100%',
       }}
     >
-      <TrendBarChart values={values} width={52} height={26} />
+      <TrendBarChart values={values} width={70} height={28} />
       <DeltaBadge value={delta} />
     </div>
   );

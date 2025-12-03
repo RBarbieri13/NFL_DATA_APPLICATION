@@ -38,12 +38,12 @@ const FantasyAnalyzerDemo = () => {
         <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 shadow-2xl border-b-4 border-blue-500">
           <div className="relative overflow-hidden">
             <div className="absolute inset-0 bg-black/20 bg-[radial-gradient(circle_at_20%_80%,_rgba(120,_119,_198,_0.3),_transparent_50%)]"></div>
-            <div className="relative max-w-full mx-auto px-6 py-3">
+            <div className="relative max-w-full mx-auto px-6 py-1">
               <div className="flex items-center gap-4">
                 <img
                   src="/logo.png"
                   alt="Rube"
-                  className="h-20 object-contain"
+                  className="h-40 object-contain"
                 />
                 <div>
                   <h1 className="text-3xl font-bold text-white tracking-tight">Fantasy Analyzer</h1>

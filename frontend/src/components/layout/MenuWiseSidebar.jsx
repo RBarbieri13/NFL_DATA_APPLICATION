@@ -76,7 +76,7 @@ const MenuWiseSidebar = ({ activeRoute, onNavigate }) => {
           <img
             src="/logo.png"
             alt="Rube"
-            className={`object-contain flex-shrink-0 ${isCollapsed ? 'h-10 w-10' : 'h-12'}`}
+            className={`object-contain flex-shrink-0 ${isCollapsed ? 'h-20 w-20' : 'h-24'}`}
           />
         </div>
         <button

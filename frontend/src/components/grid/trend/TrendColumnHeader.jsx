@@ -22,23 +22,24 @@ export const STAT_OPTIONS = [
 export const WEEK_OPTIONS = [2, 3, 4, 6, 8];
 
 /**
- * Pill-style dropdown component
+ * Pill-style dropdown component with customizable border color
+ * Matches the Fantasy Targets Trend reference design
  */
-const PillDropdown = memo(({ value, options, onChange, renderOption }) => {
+const PillDropdown = memo(({ value, options, onChange, renderOption, borderColor = '#3a4055', textColor = '#ffffff' }) => {
   return (
     <div className="relative inline-block">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="trend-dropdown appearance-none cursor-pointer pr-6"
+        className="trend-dropdown appearance-none cursor-pointer pr-5"
         style={{
-          background: 'rgba(42, 48, 69, 0.7)',
-          border: '1px solid #3a4055',
-          borderRadius: '16px',
-          padding: '3px 20px 3px 8px',
-          color: '#ffffff',
+          background: 'rgba(30, 35, 50, 0.9)',
+          border: `2px solid ${borderColor}`,
+          borderRadius: '12px',
+          padding: '2px 18px 2px 8px',
+          color: textColor,
           fontSize: '10px',
-          fontWeight: 500,
+          fontWeight: 600,
           outline: 'none',
           transition: 'all 0.15s ease',
         }}
@@ -54,8 +55,8 @@ const PillDropdown = memo(({ value, options, onChange, renderOption }) => {
         ))}
       </select>
       <ChevronDown
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none"
-        style={{ width: '10px', height: '10px', color: '#9ca3af' }}
+        className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none"
+        style={{ width: '10px', height: '10px', color: borderColor }}
       />
     </div>
   );
@@ -84,17 +85,23 @@ const TrendColumnHeader = memo(({
       className="trend-column-header flex items-center justify-center gap-1.5"
       style={{ padding: '2px 4px' }}
     >
+      {/* Stat selector - white border */}
       <PillDropdown
         value={selectedStat}
         options={STAT_OPTIONS}
         onChange={onStatChange}
         renderOption={(opt) => opt.label}
+        borderColor="#ffffff"
+        textColor="#ffffff"
       />
+      {/* Week selector - white border */}
       <PillDropdown
         value={selectedWeeks}
         options={WEEK_OPTIONS}
         onChange={(val) => onWeeksChange(parseInt(val))}
         renderOption={(opt) => `${opt}W`}
+        borderColor="#ffffff"
+        textColor="#ffffff"
       />
     </div>
   );

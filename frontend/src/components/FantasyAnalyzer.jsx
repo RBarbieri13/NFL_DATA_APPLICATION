@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ChevronDown, ChevronRight, Settings, X, Star } from 'lucide-react';
 import { getTeamLogo } from '../data/nflTeamLogos';
-import { TrendColumnHeader, TrendBarCell, STAT_OPTIONS } from './grid/trend';
+import { TrendBarCell } from './grid/trend';
 
 // Helper function to get subtle blue background color for snap counts (relative to column)
 const getSnapBackgroundColor = (value, allValues) => {
@@ -67,7 +67,7 @@ const DEFAULT_COL_WIDTHS = {
   opp: 70,
   price: 60,
   proj: 50,
-  trend: 115,
+  trend: 105,
   num: 35,
   fpts: 45,
   cmpAtt: 55,
@@ -981,7 +981,7 @@ const FantasyAnalyzer = () => {
           <thead>
             {/* Header Row 1: Top Level Categories with Week Titles */}
             <tr>
-              <ClickableHeaderCell colSpan={6} className="bg-gray-300 text-black">Matchup</ClickableHeaderCell>
+              <ClickableHeaderCell colSpan={5} className="bg-gray-300 text-black">Matchup</ClickableHeaderCell>
               {weeksToShow.map((week, weekIndex) => {
                 const isLastWeek = weekIndex === weeksToShow.length - 1;
                 return (
@@ -1005,6 +1005,8 @@ const FantasyAnalyzer = () => {
                   </WeekResizableHeader>
                 );
               })}
+              {/* Trend column header - rightmost position, matches week sections */}
+              <ClickableHeaderCell className="bg-slate-800 text-white text-lg">Trend</ClickableHeaderCell>
             </tr>
 
             {/* Header Row 2: Sub-Categories (Passing, Rushing, etc.) */}
@@ -1060,24 +1062,6 @@ const FantasyAnalyzer = () => {
               >
                 Proj.
               </ResizableHeaderCell>
-              {/* Trend Column Header with dropdowns */}
-              <th
-                rowSpan={2}
-                className="border border-gray-400 bg-slate-800 text-white"
-                style={{
-                  width: `${colWidths.trend}px`,
-                  minWidth: `${colWidths.trend}px`,
-                  padding: '2px 4px',
-                  verticalAlign: 'middle'
-                }}
-              >
-                <TrendColumnHeader
-                  selectedStat={trendStat}
-                  selectedWeeks={trendWeeks}
-                  onStatChange={setTrendStat}
-                  onWeeksChange={setTrendWeeks}
-                />
-              </th>
 
               {/* Repeated Week Headers */}
               {weeksToShow.map((week, weekIndex) => {
@@ -1124,6 +1108,16 @@ const FantasyAnalyzer = () => {
                   </React.Fragment>
                 );
               })}
+              {/* Trend Column Header - Summary row */}
+              <ClickableHeaderCell
+                className="bg-gray-600 text-white"
+                style={{
+                  width: `${colWidths.trend}px`,
+                  minWidth: `${colWidths.trend}px`,
+                }}
+              >
+                Summary
+              </ClickableHeaderCell>
             </tr>
 
             {/* Header Row 3: Specific Stats - All Sortable by Click */}
@@ -1251,13 +1245,48 @@ const FantasyAnalyzer = () => {
 
                 return cells;
               })}
+              {/* Trend Column - Stat and Week dropdowns */}
+              <th
+                className="bg-gray-500 text-white"
+                style={{
+                  width: `${colWidths.trend}px`,
+                  minWidth: `${colWidths.trend}px`,
+                  padding: '2px 4px',
+                }}
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <select
+                    value={trendStat}
+                    onChange={(e) => setTrendStat(e.target.value)}
+                    className="bg-gray-600 text-white text-[9px] px-1 py-0.5 rounded border border-gray-400 cursor-pointer"
+                    style={{ maxWidth: '50px' }}
+                  >
+                    <option value="fpts">FPTS</option>
+                    <option value="rushYds">RuYd</option>
+                    <option value="recYds">ReYd</option>
+                    <option value="tgts">Tgts</option>
+                    <option value="touches">Tch</option>
+                  </select>
+                  <select
+                    value={trendWeeks}
+                    onChange={(e) => setTrendWeeks(parseInt(e.target.value))}
+                    className="bg-gray-600 text-white text-[9px] px-1 py-0.5 rounded border border-gray-400 cursor-pointer"
+                    style={{ maxWidth: '36px' }}
+                  >
+                    <option value={3}>3W</option>
+                    <option value={4}>4W</option>
+                    <option value={5}>5W</option>
+                    <option value={6}>6W</option>
+                  </select>
+                </div>
+              </th>
             </tr>
           </thead>
 
           <tbody>
             {sortedData.length === 0 && !loading ? (
               <tr>
-                <td colSpan={6 + weeksToShow.reduce((sum, week) => sum + getStatsPerWeekCols(week), 0)} className="text-center py-8 text-gray-500">
+                <td colSpan={5 + weeksToShow.reduce((sum, week) => sum + getStatsPerWeekCols(week), 0) + 1} className="text-center py-8 text-gray-500">
                   No data available. Adjust filters or check API connection.
                 </td>
               </tr>
@@ -1304,13 +1333,18 @@ const FantasyAnalyzer = () => {
                     </DataCell>
                     <DataCell className="text-right" width={colWidths.price}>{formatCurrency(player.price)}</DataCell>
                     <DataCell className="font-bold" width={colWidths.proj}>{player.proj?.toFixed(1) || '-'}</DataCell>
-                    {/* Trend Column */}
+
+                    {/* Weekly Data columns */}
+                    {renderWeeklyRowData(player.weeks || [])}
+
+                    {/* Trend Column - rightmost position, light background */}
                     <td
-                      className="border border-gray-300 bg-slate-800"
+                      className="border border-gray-300"
                       style={{
                         width: `${colWidths.trend}px`,
                         minWidth: `${colWidths.trend}px`,
                         padding: 0,
+                        backgroundColor: index % 2 === 0 ? '#ffffff' : '#f9fafb',
                       }}
                     >
                       <TrendBarCell
@@ -1320,9 +1354,6 @@ const FantasyAnalyzer = () => {
                         weeksToShow={weeksToShow}
                       />
                     </td>
-
-                    {/* Scrollable Weekly Data columns */}
-                    {renderWeeklyRowData(player.weeks || [])}
                   </tr>
                 );
               })
