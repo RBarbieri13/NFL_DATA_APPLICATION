@@ -1,41 +1,56 @@
-import React from 'react';
-import { X, AlertTriangle, Users, BarChart3 } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { X, AlertTriangle, Users, BarChart3, GripVertical } from 'lucide-react';
 import InjuryPanel from './InjuryPanel';
 
-// Tab configuration
-const TABS = [
-  { id: 'injuries', label: 'Injuries', icon: AlertTriangle, color: 'text-yellow-400', bgColor: 'bg-yellow-500' },
-  { id: 'team-analysis', label: 'Team Analysis', icon: BarChart3, color: 'text-blue-400', bgColor: 'bg-blue-500' },
-  { id: 'depth-chart', label: 'Depth Chart', icon: Users, color: 'text-green-400', bgColor: 'bg-green-500' },
+// Default tab configuration
+const DEFAULT_TABS = [
+  { id: 'injuries', label: 'Injuries', icon: AlertTriangle, color: 'text-yellow-400', bgColor: 'bg-yellow-500', borderColor: 'border-yellow-400' },
+  { id: 'team-analysis', label: 'Team Analysis', icon: BarChart3, color: 'text-blue-400', bgColor: 'bg-blue-500', borderColor: 'border-blue-400' },
+  { id: 'depth-chart', label: 'Depth Chart', icon: Users, color: 'text-green-400', bgColor: 'bg-green-500', borderColor: 'border-green-400' },
 ];
 
-// Vertical tab button - styled like file folder tabs on the right edge
-const TabButton = ({ tab, isActive, onClick }) => {
+// Vertical tab button - styled like file folder tabs on the right edge with drag support
+const TabButton = ({ tab, isActive, onClick, onDragStart, onDragOver, onDrop, onDragEnd, isDragging, isDragOver }) => {
   const Icon = tab.icon;
 
   return (
-    <button
-      onClick={onClick}
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, tab.id)}
+      onDragOver={(e) => onDragOver(e, tab.id)}
+      onDrop={(e) => onDrop(e, tab.id)}
+      onDragEnd={onDragEnd}
       className={`
-        relative flex items-center gap-1.5 px-2 py-3
-        rounded-l-lg transition-all duration-200
-        ${isActive
-          ? 'bg-white text-slate-800 shadow-lg -translate-x-1'
-          : 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white hover:-translate-x-0.5'
-        }
+        relative transition-all duration-200 cursor-grab active:cursor-grabbing
+        ${isDragging ? 'opacity-50 scale-95' : ''}
+        ${isDragOver ? 'transform -translate-y-2' : ''}
       `}
-      style={{
-        writingMode: 'vertical-rl',
-        textOrientation: 'mixed',
-      }}
-      title={tab.label}
     >
-      <Icon className={`w-4 h-4 ${isActive ? tab.color.replace('text-', 'text-') : ''}`}
-            style={{ transform: 'rotate(90deg)' }} />
-      <span className="text-xs font-semibold whitespace-nowrap">
-        {tab.label}
-      </span>
-    </button>
+      <button
+        onClick={onClick}
+        className={`
+          relative flex items-center gap-2 px-3 py-4
+          rounded-l-xl transition-all duration-200
+          border-l-4 min-w-[52px]
+          ${isActive
+            ? `bg-white text-slate-800 shadow-xl -translate-x-2 ${tab.borderColor}`
+            : `bg-gradient-to-r from-slate-700 to-slate-600 text-slate-200 hover:from-slate-600 hover:to-slate-500 hover:text-white hover:-translate-x-1 border-transparent hover:${tab.borderColor}`
+          }
+        `}
+        style={{
+          writingMode: 'vertical-rl',
+          textOrientation: 'mixed',
+        }}
+        title={`${tab.label} (drag to reorder)`}
+      >
+        <GripVertical className="w-3 h-3 opacity-40" style={{ transform: 'rotate(90deg)' }} />
+        <Icon className={`w-5 h-5 ${isActive ? tab.color : 'text-slate-300'}`}
+              style={{ transform: 'rotate(90deg)' }} />
+        <span className="text-sm font-bold whitespace-nowrap tracking-wide">
+          {tab.label}
+        </span>
+      </button>
+    </div>
   );
 };
 
@@ -80,8 +95,56 @@ const RightSidePanel = ({
   onTabClick,
   onClose
 }) => {
-  const activeTabConfig = TABS.find(t => t.id === activeTab);
+  // State for tab order (allows drag-and-drop reordering)
+  const [tabs, setTabs] = useState(DEFAULT_TABS);
+  const [draggedTabId, setDraggedTabId] = useState(null);
+  const [dragOverTabId, setDragOverTabId] = useState(null);
+
+  const activeTabConfig = tabs.find(t => t.id === activeTab);
   const ActiveIcon = activeTabConfig?.icon || AlertTriangle;
+
+  // Drag and drop handlers
+  const handleDragStart = useCallback((e, tabId) => {
+    setDraggedTabId(tabId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', tabId);
+  }, []);
+
+  const handleDragOver = useCallback((e, tabId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (tabId !== draggedTabId) {
+      setDragOverTabId(tabId);
+    }
+  }, [draggedTabId]);
+
+  const handleDrop = useCallback((e, targetTabId) => {
+    e.preventDefault();
+    const sourceTabId = draggedTabId;
+    
+    if (sourceTabId && sourceTabId !== targetTabId) {
+      setTabs(prevTabs => {
+        const newTabs = [...prevTabs];
+        const sourceIndex = newTabs.findIndex(t => t.id === sourceTabId);
+        const targetIndex = newTabs.findIndex(t => t.id === targetTabId);
+        
+        if (sourceIndex !== -1 && targetIndex !== -1) {
+          const [removed] = newTabs.splice(sourceIndex, 1);
+          newTabs.splice(targetIndex, 0, removed);
+        }
+        
+        return newTabs;
+      });
+    }
+    
+    setDraggedTabId(null);
+    setDragOverTabId(null);
+  }, [draggedTabId]);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedTabId(null);
+    setDragOverTabId(null);
+  }, []);
 
   return (
     <>
@@ -90,7 +153,7 @@ const RightSidePanel = ({
         {/* Sliding Panel Content - slides from right */}
         <div
           className={`
-            bg-white border border-gray-300 shadow-2xl rounded-l-lg
+            bg-white border border-gray-300 shadow-2xl rounded-l-xl
             transition-all duration-300 ease-in-out overflow-hidden
             ${isOpen ? 'w-96 opacity-100' : 'w-0 opacity-0'}
           `}
@@ -99,14 +162,14 @@ const RightSidePanel = ({
           {isOpen && (
             <div className="w-96 h-full flex flex-col">
               {/* Panel Header */}
-              <div className="bg-slate-800 text-white px-3 py-2 flex items-center justify-between flex-shrink-0 rounded-tl-lg">
+              <div className="bg-gradient-to-r from-slate-800 to-slate-700 text-white px-4 py-3 flex items-center justify-between flex-shrink-0 rounded-tl-xl">
                 <div className="flex items-center gap-2">
-                  <ActiveIcon className={`w-4 h-4 ${activeTabConfig?.color}`} />
-                  <span className="font-bold text-sm">{activeTabConfig?.label}</span>
+                  <ActiveIcon className={`w-5 h-5 ${activeTabConfig?.color}`} />
+                  <span className="font-bold text-base">{activeTabConfig?.label}</span>
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-1 hover:bg-slate-700 rounded transition-colors"
+                  className="p-1.5 hover:bg-slate-600 rounded-lg transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -136,13 +199,19 @@ const RightSidePanel = ({
         </div>
 
         {/* Vertical Tab Bar - file folder tabs stacked vertically on right edge */}
-        <div className="flex flex-col gap-1 bg-slate-800 py-2 px-1 rounded-l-lg shadow-lg">
-          {TABS.map(tab => (
+        <div className="flex flex-col gap-2 bg-gradient-to-b from-slate-800 to-slate-900 py-3 px-1.5 rounded-l-xl shadow-2xl border-l border-t border-b border-slate-600">
+          {tabs.map(tab => (
             <TabButton
               key={tab.id}
               tab={tab}
               isActive={isOpen && activeTab === tab.id}
               onClick={() => onTabClick(tab.id)}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onDragEnd={handleDragEnd}
+              isDragging={draggedTabId === tab.id}
+              isDragOver={dragOverTabId === tab.id}
             />
           ))}
         </div>

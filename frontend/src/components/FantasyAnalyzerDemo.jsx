@@ -34,20 +34,20 @@ const FantasyAnalyzerDemo = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header with Rube Logo */}
-        <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 shadow-2xl border-b-4 border-blue-500">
+        {/* Header with Rube Logo - Compact banner */}
+        <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 shadow-lg border-b-2 border-blue-500">
           <div className="relative overflow-hidden">
             <div className="absolute inset-0 bg-black/20 bg-[radial-gradient(circle_at_20%_80%,_rgba(120,_119,_198,_0.3),_transparent_50%)]"></div>
-            <div className="relative max-w-full mx-auto px-6 py-1">
-              <div className="flex items-center gap-4">
+            <div className="relative max-w-full mx-auto px-4 py-1">
+              <div className="flex items-center gap-3">
                 <img
                   src="/logo.png"
                   alt="Rube"
-                  className="h-40 object-contain"
+                  className="h-12 object-contain"
                 />
                 <div>
-                  <h1 className="text-3xl font-bold text-white tracking-tight">Fantasy Analyzer</h1>
-                  <p className="text-blue-200 text-sm">Weekly Player Stats & Trends</p>
+                  <h1 className="text-lg font-bold text-white tracking-tight leading-tight">Rube Fantasy Analyzer</h1>
+                  <p className="text-blue-200 text-xs">Weekly Player Stats & Trends</p>
                 </div>
               </div>
             </div>
