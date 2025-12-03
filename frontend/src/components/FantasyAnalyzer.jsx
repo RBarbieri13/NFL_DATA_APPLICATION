@@ -51,7 +51,7 @@ const getFptsBackgroundColor = (value, allValues) => {
   return 'rgba(239, 68, 68, 0.18)'; // Stronger red for lowest
 };
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:10000';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 
 const NFL_TEAMS = [
   'All', 'ARI', 'ATL', 'BAL', 'BUF', 'CAR', 'CHI', 'CIN', 'CLE',

@@ -2984,6 +2984,125 @@ async def get_analyzer_data(
         logging.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error getting analyzer data: {str(e)}")
 
+
+# ============== INJURY ENDPOINTS ==============
+# Import the injury scraper
+from injury_scraper import scrape_pfr_injuries, get_fantasy_relevant_injuries, filter_by_team, SKILL_POSITIONS
+
+# Cache for injury data (15 minute TTL)
+_injury_cache = {
+    'data': None,
+    'timestamp': None,
+    'ttl': 900  # 15 minutes in seconds
+}
+
+def get_cached_injuries(force_refresh=False):
+    """Get injury data with caching"""
+    current_time = time.time()
+
+    if (not force_refresh and
+        _injury_cache['data'] is not None and
+        _injury_cache['timestamp'] is not None and
+        current_time - _injury_cache['timestamp'] < _injury_cache['ttl']):
+        return _injury_cache['data']
+
+    # Fetch fresh data
+    injuries = scrape_pfr_injuries()
+    _injury_cache['data'] = injuries
+    _injury_cache['timestamp'] = current_time
+
+    return injuries
+
+
+@api_router.get("/injuries")
+async def get_injuries(
+    team: Optional[str] = Query(None, description="Filter by team abbreviation"),
+    position: Optional[str] = Query(None, description="Filter by position"),
+    refresh: bool = Query(False, description="Force refresh from source")
+):
+    """Get all current NFL injuries"""
+    try:
+        injuries = get_cached_injuries(force_refresh=refresh)
+
+        # Apply filters
+        if team:
+            injuries = [inj for inj in injuries if inj.get('team', '').upper() == team.upper()]
+
+        if position:
+            injuries = [inj for inj in injuries if inj.get('position', '').upper() == position.upper()]
+
+        return injuries
+
+    except Exception as e:
+        logging.error(f"Error fetching injuries: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching injuries: {str(e)}")
+
+
+@api_router.get("/injuries/fantasy")
+async def get_fantasy_injuries(
+    team: Optional[str] = Query(None, description="Filter by team abbreviation"),
+    position: Optional[str] = Query(None, description="Filter by position"),
+    refresh: bool = Query(False, description="Force refresh from source")
+):
+    """Get injuries for fantasy-relevant skill positions only (QB, RB, WR, TE, K)"""
+    try:
+        injuries = get_cached_injuries(force_refresh=refresh)
+
+        # Filter to skill positions
+        injuries = [inj for inj in injuries if inj.get('position') in SKILL_POSITIONS]
+
+        # Apply additional filters
+        if team:
+            injuries = [inj for inj in injuries if inj.get('team', '').upper() == team.upper()]
+
+        if position:
+            injuries = [inj for inj in injuries if inj.get('position', '').upper() == position.upper()]
+
+        return injuries
+
+    except Exception as e:
+        logging.error(f"Error fetching fantasy injuries: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching injuries: {str(e)}")
+
+
+@api_router.get("/injuries/summary")
+async def get_injury_summary(refresh: bool = Query(False, description="Force refresh from source")):
+    """Get summary statistics about current injuries"""
+    try:
+        injuries = get_cached_injuries(force_refresh=refresh)
+        skill_injuries = [inj for inj in injuries if inj.get('position') in SKILL_POSITIONS]
+
+        # Count by status
+        status_counts = {}
+        for inj in skill_injuries:
+            status = inj.get('status', 'Unknown')
+            status_counts[status] = status_counts.get(status, 0) + 1
+
+        # Count by position
+        position_counts = {}
+        for inj in skill_injuries:
+            pos = inj.get('position', 'Unknown')
+            position_counts[pos] = position_counts.get(pos, 0) + 1
+
+        # Count by team
+        team_counts = {}
+        for inj in skill_injuries:
+            team = inj.get('team', 'Unknown')
+            team_counts[team] = team_counts.get(team, 0) + 1
+
+        return {
+            'total_injuries': len(injuries),
+            'skill_position_injuries': len(skill_injuries),
+            'by_status': status_counts,
+            'by_position': position_counts,
+            'by_team': team_counts
+        }
+
+    except Exception as e:
+        logging.error(f"Error fetching injury summary: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching injury summary: {str(e)}")
+
+
 # Initialize database on startup
 init_database()
 

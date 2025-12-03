@@ -1,11 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import FantasyAnalyzer from './FantasyAnalyzer';
 import MenuWiseSidebar from './layout/MenuWiseSidebar';
+import RightSidePanel from './RightSidePanel';
 
 const FantasyAnalyzerDemo = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Right side panel state
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('injuries');
+
+  // Handle tab click - toggle panel or switch tabs
+  const handleTabClick = (tabId) => {
+    if (isPanelOpen && activeTab === tabId) {
+      // Clicking same tab closes panel
+      setIsPanelOpen(false);
+    } else {
+      // Open panel and switch to tab
+      setActiveTab(tabId);
+      setIsPanelOpen(true);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -42,6 +59,16 @@ const FantasyAnalyzerDemo = () => {
           <FantasyAnalyzer />
         </main>
       </div>
+
+      {/* Right Side Panel with Injury Report and other tabs */}
+      <RightSidePanel
+        isOpen={isPanelOpen}
+        activeTab={activeTab}
+        onTabClick={handleTabClick}
+        onClose={() => setIsPanelOpen(false)}
+        teamFilter={null}
+        positionFilter={null}
+      />
     </div>
   );
 };
