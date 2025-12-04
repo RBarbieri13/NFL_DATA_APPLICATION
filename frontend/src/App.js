@@ -19,6 +19,7 @@ import TrendToolGrid from './components/TrendToolGrid';
 import FantasyAnalyzerDemo from './components/FantasyAnalyzerDemo';
 import Admin from './components/Admin';
 import AnalyzerFilters from './components/AnalyzerFilters';
+import AggregateDataTable from './components/AggregateDataTable';
 import { getTeamLogo } from './data/nflTeamLogos';
 import '@/App.css';
 
@@ -1142,104 +1143,8 @@ const FantasyDashboard = () => {
                 </div>
               </div>
             ) : (
-              <div className="flex h-full">
-                {/* Filter Sidebar */}
-                <div className={`border-r border-gray-200 bg-white transition-all duration-300 ease-in-out flex flex-col ${showOptimizerFilter ? 'w-80' : 'w-0 overflow-hidden'}`}>
-                  <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                    <h3 className="font-semibold text-gray-700 flex items-center">
-                      <Filter className="h-4 w-4 mr-2" />
-                      Filters
-                    </h3>
-                    <Button variant="ghost" size="sm" onClick={() => setShowOptimizerFilter(false)} className="h-8 w-8 p-0">
-                      &times;
-                    </Button>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-4">
-                    <OptimizerFilter
-                      filters={filters}
-                      setFilters={setFilters}
-                      onClearFilter={clearFilter}
-                      activeFilters={getActiveFilters()}
-                    />
-                  </div>
-                </div>
-
-                {/* Data Grid */}
-                <div className="flex-1 flex flex-col overflow-hidden bg-white">
-                  {/* Filter Toggle Bar */}
-                  <div className="flex items-center justify-between p-2 border-b border-gray-200 bg-gray-50">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant={showOptimizerFilter ? "secondary" : "outline"}
-                        size="sm"
-                        onClick={() => setShowOptimizerFilter(!showOptimizerFilter)}
-                        className="flex items-center gap-2"
-                      >
-                        <Filter className="h-4 w-4" />
-                        {showOptimizerFilter ? 'Hide Filters' : 'Show Filters'}
-                        {getActiveFilters().length > 0 && (
-                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
-                            {getActiveFilters().length}
-                          </Badge>
-                        )}
-                      </Button>
-
-                      <div className="h-4 w-px bg-gray-300 mx-2"></div>
-
-                      {/* Active Filters Display */}
-                      <div className="flex flex-wrap gap-1 items-center">
-                        {getActiveFilters().map((filter) => (
-                          <Badge key={filter.key} variant="outline" className="bg-white text-xs font-normal flex items-center gap-1 pl-2 pr-1 py-0.5 h-6">
-                            {filter.label}
-                            <button
-                              onClick={() => clearFilter(filter.key)}
-                              className="ml-1 hover:bg-gray-100 rounded-full p-0.5"
-                            >
-                              <span className="sr-only">Remove</span>
-                              &times;
-                            </button>
-                          </Badge>
-                        ))}
-                        {getActiveFilters().length > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setFilters({
-                                season: '2024',
-                                week: 'all',
-                                position: 'all',
-                                team: 'all',
-                                minSalary: '',
-                                minSnaps: ''
-                              });
-                              setSearchTerm('');
-                            }}
-                            className="text-xs h-6 px-2 text-gray-500 hover:text-gray-900"
-                          >
-                            Clear all
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-gray-500">
-                      {filteredPlayers.length} players found
-                    </div>
-                  </div>
-
-                  <div className="flex-1 ag-theme-alpine w-full" style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}>
-                    <AgGridReact
-                      ref={setGridApi}
-                      rowData={filteredPlayers}
-                      columnDefs={columnDefs}
-                      defaultColDef={defaultColDef}
-                      gridOptions={gridOptions}
-                      pagination={true}
-                      paginationPageSize={50}
-                    />
-                  </div>
-                </div>
+              <div className="flex-1 overflow-hidden">
+                <AggregateDataTable />
               </div>
             )}
           </main>

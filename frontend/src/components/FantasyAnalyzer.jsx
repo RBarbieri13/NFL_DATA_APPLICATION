@@ -281,6 +281,120 @@ const DataCell = ({ children, className = "", width, style = {} }) => (
   </td>
 );
 
+// Multi-Select Position Selector Component
+const PositionSelector = ({ selectedPositions, onToggle }) => {
+  const positions = ['All', 'QB', 'RB', 'WR', 'TE', 'FLEX', 'DST'];
+
+  return (
+    <div className="flex items-center gap-0.5 bg-gray-100 p-1 rounded-lg">
+      {positions.map((pos) => {
+        const isSelected = selectedPositions.has(pos) ||
+          (pos === 'All' && selectedPositions.size === 0);
+        return (
+          <button
+            key={pos}
+            onClick={() => onToggle(pos)}
+            className={`
+              px-3 py-1.5 rounded text-sm font-medium transition-all duration-150
+              ${isSelected
+                ? 'bg-blue-500 text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-200'
+              }
+            `}
+          >
+            {pos}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+// Game Selector Bar Component - Shows weekly matchups
+const GameSelectorBar = ({ games, selectedGame, onSelectGame }) => {
+  if (!games || games.length === 0) {
+    return null;
+  }
+
+  // Group games by weekday for visual separation
+  const gamesByDay = games.reduce((acc, game) => {
+    const day = game.weekday || 'Sunday';
+    if (!acc[day]) acc[day] = [];
+    acc[day].push(game);
+    return acc;
+  }, {});
+
+  // Order days: Thursday, Friday, Saturday, Sunday, Monday
+  const dayOrder = ['Thursday', 'Friday', 'Saturday', 'Sunday', 'Monday'];
+  const orderedDays = dayOrder.filter(day => gamesByDay[day]);
+
+  return (
+    <div className="flex items-stretch gap-2 overflow-x-auto pb-2 scrollbar-thin">
+      {orderedDays.map((day, dayIdx) => (
+        <React.Fragment key={day}>
+          {/* Day separator (except before first day) */}
+          {dayIdx > 0 && (
+            <div className="flex items-center px-1">
+              <div className="h-8 w-px bg-gray-300" />
+            </div>
+          )}
+
+          {/* Day label */}
+          <div className="flex flex-col items-center justify-center px-1">
+            <span className="text-[9px] text-gray-400 font-medium uppercase tracking-wide">
+              {day.slice(0, 3)}
+            </span>
+          </div>
+
+          {/* Games for this day */}
+          {gamesByDay[day].map((game, idx) => {
+            const isSelected = selectedGame?.id === game.id;
+            return (
+              <button
+                key={game.id || `${day}-${idx}`}
+                onClick={() => onSelectGame(isSelected ? null : game)}
+                className={`
+                  flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-lg border
+                  transition-all duration-150 min-w-[85px]
+                  ${isSelected
+                    ? 'bg-blue-50 border-blue-400 shadow-sm'
+                    : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }
+                `}
+              >
+                {/* Game Time */}
+                <span className="text-[10px] text-gray-500 font-medium mb-1">
+                  {game.time}
+                </span>
+
+                {/* Away Team */}
+                <div className="flex items-center gap-1 mb-0.5">
+                  {game.awayLogo && (
+                    <img src={game.awayLogo} alt={game.away} className="w-4 h-4 object-contain" />
+                  )}
+                  <span className={`text-xs font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                    {game.away}
+                  </span>
+                </div>
+
+                {/* Home Team */}
+                <div className="flex items-center gap-1">
+                  {game.homeLogo && (
+                    <img src={game.homeLogo} alt={game.home} className="w-4 h-4 object-contain" />
+                  )}
+                  <span className={`text-xs font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                    {game.home}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+
 // Column Visibility Selector Component
 const ColumnVisibilitySelector = ({ visibleColumns, setVisibleColumns, onClose }) => {
   const handleCategoryToggle = (categoryKey) => {
@@ -343,8 +457,8 @@ const ColumnVisibilitySelector = ({ visibleColumns, setVisibleColumns, onClose }
 };
 
 const FantasyAnalyzer = () => {
-  // Filter state
-  const [selectedPos, setSelectedPos] = useState('RB');
+  // Filter state - multi-select positions
+  const [selectedPositions, setSelectedPositions] = useState(new Set(['RB']));
   const [selectedTeam, setSelectedTeam] = useState('All');
   const [selectedSlate, setSelectedSlate] = useState('Main');
   const [weekFrom, setWeekFrom] = useState(1);
@@ -352,6 +466,17 @@ const FantasyAnalyzer = () => {
   const [season, setSeason] = useState(2025);
   const [salaryMin, setSalaryMin] = useState(0);
   const [salaryMax, setSalaryMax] = useState(15000);
+
+  // Game selector state
+  const [weeklyGames, setWeeklyGames] = useState([]);
+  const [selectedGame, setSelectedGame] = useState(null);
+
+  // Legacy single position for API compatibility
+  const selectedPos = selectedPositions.size === 1
+    ? Array.from(selectedPositions)[0]
+    : selectedPositions.size === 0 || selectedPositions.has('All')
+      ? 'All'
+      : Array.from(selectedPositions).join(',');
 
   // Data state
   const [data, setData] = useState([]);
@@ -406,6 +531,39 @@ const FantasyAnalyzer = () => {
       }
       return newSet;
     });
+  }, []);
+
+  // Toggle position selection (multi-select)
+  const togglePosition = useCallback((pos) => {
+    setSelectedPositions(prev => {
+      const newSet = new Set(prev);
+
+      if (pos === 'All') {
+        // Clicking All clears other selections
+        return new Set();
+      }
+
+      // Remove 'All' if it was selected and we're selecting a specific position
+      newSet.delete('All');
+
+      if (newSet.has(pos)) {
+        newSet.delete(pos);
+        // If nothing selected, default to All
+        if (newSet.size === 0) {
+          return new Set();
+        }
+      } else {
+        newSet.add(pos);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Handle game selection (filters to teams in that game)
+  const handleGameSelect = useCallback((game) => {
+    setSelectedGame(game);
+    // If a game is selected, we could filter to those teams
+    // For now, just track the selection
   }, []);
 
   // Close column selector when clicking outside
@@ -555,6 +713,48 @@ const FantasyAnalyzer = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch weekly games for the game selector bar
+  useEffect(() => {
+    const formatGameTime = (gametime) => {
+      if (!gametime) return 'TBD';
+      // Convert 24h "20:20" to "8:20PM ET"
+      const [hours, minutes] = gametime.split(':').map(Number);
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const displayHour = hours % 12 || 12;
+      return `${displayHour}:${minutes.toString().padStart(2, '0')}${period} ET`;
+    };
+
+    const fetchGames = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/weekly-games?season=${season}&week=${weekTo}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.games) {
+            // Format games with logos, time, and proper id
+            const gamesWithLogos = result.games.map(game => ({
+              id: game.game_id,
+              away: game.away,
+              home: game.home,
+              time: formatGameTime(game.gametime),
+              weekday: game.weekday,
+              gameday: game.gameday,
+              awayLogo: getTeamLogo(game.away),
+              homeLogo: getTeamLogo(game.home),
+              spread: game.spread_line,
+              total: game.total_line
+            }));
+            setWeeklyGames(gamesWithLogos);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching weekly games:', err);
+        // Don't set error - games are optional
+      }
+    };
+
+    fetchGames();
+  }, [season, weekTo]);
 
   const formatCurrency = (amount) => {
     if (!amount) return '-';
@@ -834,138 +1034,144 @@ const FantasyAnalyzer = () => {
   return (
     <div className="p-4 bg-white min-w-[1400px] overflow-x-auto font-sans text-sm">
       {/* --- TOP CONTROLS SECTION --- */}
-      <div className="flex flex-wrap gap-4 mb-4">
-        {/* Left Filter Box */}
-        <div className="border border-black bg-[#F3EFE0] p-2 w-48">
-          <div className="flex justify-between mb-1">
-            <span className="font-bold">Pos</span>
-            <select
-              className="border border-gray-400 text-xs p-0.5 rounded"
-              value={selectedPos}
-              onChange={(e) => setSelectedPos(e.target.value)}
-            >
-              <option value="All">All</option>
-              <option value="QB">QB</option>
-              <option value="RB">RB</option>
-              <option value="WR">WR</option>
-              <option value="TE">TE</option>
-            </select>
-          </div>
-          <div className="flex justify-between mb-1">
-            <span className="font-bold">Team</span>
-            <select
-              className="border border-gray-400 text-xs p-0.5 rounded"
-              value={selectedTeam}
-              onChange={(e) => setSelectedTeam(e.target.value)}
-            >
-              {NFL_TEAMS.map(team => (
-                <option key={team} value={team}>{team}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex justify-between mb-1">
-            <span className="font-bold">Season</span>
-            <select
-              className="border border-gray-400 text-xs p-0.5 rounded"
-              value={season}
-              onChange={(e) => setSeason(parseInt(e.target.value))}
-            >
-              <option value={2025}>2025</option>
-              <option value={2024}>2024</option>
-              <option value={2023}>2023</option>
-            </select>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-bold">Slate</span>
-            <select
-              className="border border-gray-400 text-xs p-0.5 rounded"
-              value={selectedSlate}
-              onChange={(e) => setSelectedSlate(e.target.value)}
-            >
-              <option value="Main">Main</option>
-              <option value="Showdown">Showdown</option>
-            </select>
-          </div>
-        </div>
+      <div className="flex flex-col gap-3 mb-4">
+        {/* Game Selector Bar - Shows weekly matchups */}
+        {weeklyGames.length > 0 && (
+          <GameSelectorBar
+            games={weeklyGames}
+            selectedGame={selectedGame}
+            onSelectGame={handleGameSelect}
+          />
+        )}
 
-        {/* Middle Filter Box */}
-        <div className="flex flex-col gap-2">
-          <div>
-            <div className="bg-[#1F4E79] text-white text-center text-xs font-bold py-1 border border-black">
-              Select Weeks
-            </div>
-            <div className="border border-black border-t-0 p-2 flex gap-2 bg-white text-xs">
-              <select
-                className="border p-1"
-                value={weekFrom}
-                onChange={(e) => setWeekFrom(parseInt(e.target.value))}
-              >
-                {[...Array(18)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>From: Week {i + 1}</option>
-                ))}
-              </select>
-              <select
-                className="border p-1"
-                value={weekTo}
-                onChange={(e) => setWeekTo(parseInt(e.target.value))}
-              >
-                {[...Array(18)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>To: Week {i + 1}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div>
-            <div className="bg-[#1F4E79] text-white text-center text-xs font-bold py-1 border border-black">
-              Set Salary Range
-            </div>
-            <div className="border border-black border-t-0 p-2 flex gap-2 bg-white text-xs items-center">
-              <label>Min $</label>
-              <input
-                type="number"
-                className="border w-16 p-0.5"
-                value={salaryMin}
-                onChange={(e) => setSalaryMin(parseInt(e.target.value) || 0)}
-              />
-              <label>Max $</label>
-              <input
-                type="number"
-                className="border w-20 p-0.5"
-                value={salaryMax}
-                onChange={(e) => setSalaryMax(parseInt(e.target.value) || 15000)}
-              />
-            </div>
-          </div>
-        </div>
+        {/* Position Selector - Multi-select */}
+        <div className="flex items-center gap-4">
+          <PositionSelector
+            selectedPositions={selectedPositions}
+            onToggle={togglePosition}
+          />
 
-        {/* Column Visibility Selector */}
-        <div className="relative" ref={columnSelectorRef}>
-          <button
-            onClick={() => setShowColumnSelector(!showColumnSelector)}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-sm font-medium"
-          >
-            <Settings className="h-4 w-4" />
-            Columns
-          </button>
-          {showColumnSelector && (
-            <ColumnVisibilitySelector
-              visibleColumns={visibleColumns}
-              setVisibleColumns={setVisibleColumns}
-              onClose={() => setShowColumnSelector(false)}
-            />
+          {/* Loading Indicator */}
+          {loading && (
+            <div className="flex items-center text-blue-600">
+              <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+              </svg>
+              Loading...
+            </div>
           )}
         </div>
 
-        {/* Loading Indicator */}
-        {loading && (
-          <div className="flex items-center text-blue-600 ml-auto">
-            <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-            </svg>
-            Loading...
+        {/* Filter Controls Row */}
+        <div className="flex flex-wrap gap-4">
+          {/* Left Filter Box */}
+          <div className="border border-black bg-[#F3EFE0] p-2 w-48">
+            <div className="flex justify-between mb-1">
+              <span className="font-bold">Team</span>
+              <select
+                className="border border-gray-400 text-xs p-0.5 rounded"
+                value={selectedTeam}
+                onChange={(e) => setSelectedTeam(e.target.value)}
+              >
+                {NFL_TEAMS.map(team => (
+                  <option key={team} value={team}>{team}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-between mb-1">
+              <span className="font-bold">Season</span>
+              <select
+                className="border border-gray-400 text-xs p-0.5 rounded"
+                value={season}
+                onChange={(e) => setSeason(parseInt(e.target.value))}
+              >
+                <option value={2025}>2025</option>
+                <option value={2024}>2024</option>
+                <option value={2023}>2023</option>
+              </select>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-bold">Slate</span>
+              <select
+                className="border border-gray-400 text-xs p-0.5 rounded"
+                value={selectedSlate}
+                onChange={(e) => setSelectedSlate(e.target.value)}
+              >
+                <option value="Main">Main</option>
+                <option value="Showdown">Showdown</option>
+              </select>
+            </div>
           </div>
-        )}
+
+          {/* Middle Filter Box */}
+          <div className="flex flex-col gap-2">
+            <div>
+              <div className="bg-[#1F4E79] text-white text-center text-xs font-bold py-1 border border-black">
+                Select Weeks
+              </div>
+              <div className="border border-black border-t-0 p-2 flex gap-2 bg-white text-xs">
+                <select
+                  className="border p-1"
+                  value={weekFrom}
+                  onChange={(e) => setWeekFrom(parseInt(e.target.value))}
+                >
+                  {[...Array(18)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>From: Week {i + 1}</option>
+                  ))}
+                </select>
+                <select
+                  className="border p-1"
+                  value={weekTo}
+                  onChange={(e) => setWeekTo(parseInt(e.target.value))}
+                >
+                  {[...Array(18)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>To: Week {i + 1}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <div className="bg-[#1F4E79] text-white text-center text-xs font-bold py-1 border border-black">
+                Set Salary Range
+              </div>
+              <div className="border border-black border-t-0 p-2 flex gap-2 bg-white text-xs items-center">
+                <label>Min $</label>
+                <input
+                  type="number"
+                  className="border w-16 p-0.5"
+                  value={salaryMin}
+                  onChange={(e) => setSalaryMin(parseInt(e.target.value) || 0)}
+                />
+                <label>Max $</label>
+                <input
+                  type="number"
+                  className="border w-20 p-0.5"
+                  value={salaryMax}
+                  onChange={(e) => setSalaryMax(parseInt(e.target.value) || 15000)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Column Visibility Selector */}
+          <div className="relative" ref={columnSelectorRef}>
+            <button
+              onClick={() => setShowColumnSelector(!showColumnSelector)}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-sm font-medium"
+            >
+              <Settings className="h-4 w-4" />
+              Columns
+            </button>
+            {showColumnSelector && (
+              <ColumnVisibilitySelector
+                visibleColumns={visibleColumns}
+                setVisibleColumns={setVisibleColumns}
+                onClose={() => setShowColumnSelector(false)}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -1005,8 +1211,8 @@ const FantasyAnalyzer = () => {
                   </WeekResizableHeader>
                 );
               })}
-              {/* Trend column header - rightmost position, matches week sections */}
-              <ClickableHeaderCell className="bg-slate-800 text-white text-lg">Trend</ClickableHeaderCell>
+              {/* Trend column header - rightmost position, matches other headers */}
+              <ClickableHeaderCell className="bg-gray-300 text-black text-lg">Trend</ClickableHeaderCell>
             </tr>
 
             {/* Header Row 2: Sub-Categories (Passing, Rushing, etc.) */}
@@ -1108,15 +1314,53 @@ const FantasyAnalyzer = () => {
                   </React.Fragment>
                 );
               })}
-              {/* Trend Column Header - Summary row */}
+              {/* Trend Column Header - Summary row - matches Player/Pos/Opp styling */}
               <ClickableHeaderCell
-                className="bg-gray-600 text-white"
+                rowSpan={2}
+                className="bg-gray-700 text-white"
                 style={{
                   width: `${colWidths.trend}px`,
                   minWidth: `${colWidths.trend}px`,
                 }}
               >
-                Summary
+                <div className="flex flex-col items-center gap-0.5">
+                  <div className="flex items-center justify-center gap-1">
+                    <select
+                      value={trendStat}
+                      onChange={(e) => setTrendStat(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-gray-600 text-white text-[9px] px-1 py-0.5 rounded border border-gray-400 cursor-pointer"
+                      style={{ maxWidth: '55px' }}
+                    >
+                      <option value="fpts">FPTS</option>
+                      <option value="snapPct">Snap%</option>
+                      <option value="touches">Tch</option>
+                      <option value="passYds">PaYd</option>
+                      <option value="passTd">PaTD</option>
+                      <option value="passInt">Int</option>
+                      <option value="rushAtt">RuAtt</option>
+                      <option value="rushYds">RuYd</option>
+                      <option value="rushTd">RuTD</option>
+                      <option value="tgts">Tgts</option>
+                      <option value="rec">Rec</option>
+                      <option value="recYds">ReYd</option>
+                      <option value="recTd">ReTD</option>
+                    </select>
+                    <select
+                      value={trendWeeks}
+                      onChange={(e) => setTrendWeeks(parseInt(e.target.value))}
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-gray-600 text-white text-[9px] px-1 py-0.5 rounded border border-gray-400 cursor-pointer"
+                      style={{ maxWidth: '36px' }}
+                    >
+                      <option value={2}>2W</option>
+                      <option value={3}>3W</option>
+                      <option value={4}>4W</option>
+                      <option value={6}>6W</option>
+                      <option value={8}>8W</option>
+                    </select>
+                  </div>
+                </div>
               </ClickableHeaderCell>
             </tr>
 
@@ -1245,41 +1489,7 @@ const FantasyAnalyzer = () => {
 
                 return cells;
               })}
-              {/* Trend Column - Stat and Week dropdowns */}
-              <th
-                className="bg-gray-500 text-white"
-                style={{
-                  width: `${colWidths.trend}px`,
-                  minWidth: `${colWidths.trend}px`,
-                  padding: '2px 4px',
-                }}
-              >
-                <div className="flex items-center justify-center gap-1">
-                  <select
-                    value={trendStat}
-                    onChange={(e) => setTrendStat(e.target.value)}
-                    className="bg-gray-600 text-white text-[9px] px-1 py-0.5 rounded border border-gray-400 cursor-pointer"
-                    style={{ maxWidth: '50px' }}
-                  >
-                    <option value="fpts">FPTS</option>
-                    <option value="rushYds">RuYd</option>
-                    <option value="recYds">ReYd</option>
-                    <option value="tgts">Tgts</option>
-                    <option value="touches">Tch</option>
-                  </select>
-                  <select
-                    value={trendWeeks}
-                    onChange={(e) => setTrendWeeks(parseInt(e.target.value))}
-                    className="bg-gray-600 text-white text-[9px] px-1 py-0.5 rounded border border-gray-400 cursor-pointer"
-                    style={{ maxWidth: '36px' }}
-                  >
-                    <option value={3}>3W</option>
-                    <option value={4}>4W</option>
-                    <option value={5}>5W</option>
-                    <option value={6}>6W</option>
-                  </select>
-                </div>
-              </th>
+              {/* Trend Column header spans from row 2, no cell needed here */}
             </tr>
           </thead>
 

@@ -1,5 +1,7 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Query, UploadFile, File
 from fastapi.responses import JSONResponse
+import shutil
+import io
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 import os
@@ -1686,7 +1688,7 @@ def init_database():
             )
         """)
         
-        # Create DraftKings pricing table
+        # Create DraftKings pricing table with extended columns for spreadsheet data
         conn.execute("""
             CREATE TABLE IF NOT EXISTS draftkings_pricing (
                 id INTEGER PRIMARY KEY,
@@ -1696,11 +1698,24 @@ def init_database():
                 season INTEGER NOT NULL,
                 week INTEGER NOT NULL,
                 salary INTEGER NOT NULL,
+                opponent VARCHAR,
+                opp_rank INTEGER,
+                opp_pos_rank INTEGER,
+                projected_fpts DOUBLE,
                 dk_player_id VARCHAR,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(player_name, team, season, week)
             )
         """)
+
+        # Add new columns if they don't exist (for existing databases)
+        try:
+            conn.execute("ALTER TABLE draftkings_pricing ADD COLUMN IF NOT EXISTS opponent VARCHAR")
+            conn.execute("ALTER TABLE draftkings_pricing ADD COLUMN IF NOT EXISTS opp_rank INTEGER")
+            conn.execute("ALTER TABLE draftkings_pricing ADD COLUMN IF NOT EXISTS opp_pos_rank INTEGER")
+            conn.execute("ALTER TABLE draftkings_pricing ADD COLUMN IF NOT EXISTS projected_fpts DOUBLE")
+        except Exception:
+            pass  # Columns may already exist
         
         # Create indexes for better performance
         conn.execute("""
@@ -2456,26 +2471,27 @@ async def scrape_salaries():
 
 @api_router.post("/load-excel-salaries", response_model=DraftKingsResponse)
 async def load_excel_salaries():
-    """Load DraftKings salaries from Excel file"""
+    """Load DraftKings salaries from Excel file with all columns including OPP, OPP RANK, FPTS"""
     try:
         logging.info("Loading DraftKings salaries from Excel file")
-        
+
         excel_file = ROOT_DIR / "dk_salaries.xlsx"
         if not excel_file.exists():
-            raise HTTPException(status_code=404, detail="Excel file not found")
-        
+            raise HTTPException(status_code=404, detail="Excel file not found at backend/dk_salaries.xlsx")
+
         # Read Excel file
         xl = pd.ExcelFile(excel_file)
         logging.info(f"Found sheets: {xl.sheet_names}")
-        
+
         total_inserted = 0
         total_updated = 0
         total_skipped = 0
-        
+        weeks_found = set()
+
         for sheet_name in xl.sheet_names:
             df = pd.read_excel(excel_file, sheet_name=sheet_name)
             logging.info(f"Processing sheet: {sheet_name}, rows: {len(df)}, columns: {df.columns.tolist()}")
-            
+
             for idx, row in df.iterrows():
                 try:
                     # Extract data - try different column name variations
@@ -2484,16 +2500,28 @@ async def load_excel_salaries():
                     team = row.get('TEAM', row.get('team', row.get('Team', '')))
                     position = row.get('POS', row.get('pos', row.get('Position', '')))
                     salary_raw = row.get('$', row.get('Salary', row.get('salary', row.get('DK $', 0))))
-                    
+
+                    # New columns from spreadsheet
+                    opponent = row.get('OPP', row.get('opp', row.get('Opponent', '')))
+                    opp_rank = row.get('OPP RANK', row.get('opp_rank', row.get('Opp Rank', None)))
+                    opp_pos_rank = row.get('OPP POS RANK', row.get('opp_pos_rank', row.get('Opp Pos Rank', None)))
+                    projected_fpts = row.get('FPTS', row.get('fpts', row.get('Projected', row.get('Proj', None))))
+
                     # Clean up data
                     if pd.isna(name) or name == '':
                         total_skipped += 1
                         continue
-                        
+
                     name = str(name).strip()
                     team = str(team).strip().upper() if not pd.isna(team) else 'UNK'
                     position = str(position).strip().upper() if not pd.isna(position) else 'UNK'
-                    
+                    opponent = str(opponent).strip().upper() if not pd.isna(opponent) else None
+
+                    # Parse numeric values
+                    opp_rank = int(opp_rank) if not pd.isna(opp_rank) else None
+                    opp_pos_rank = int(opp_pos_rank) if not pd.isna(opp_pos_rank) else None
+                    projected_fpts = float(projected_fpts) if not pd.isna(projected_fpts) else None
+
                     # Parse salary - handle string format like "7400"
                     if pd.isna(salary_raw):
                         salary = 0
@@ -2510,73 +2538,86 @@ async def load_excel_salaries():
                             salary = int(float(salary_raw))
                         except:
                             salary = 0
-                    
+
                     if salary == 0 or salary < 2000:
                         total_skipped += 1
                         continue
-                    
+
                     # Only QB, RB, WR, TE
                     if position not in ['QB', 'RB', 'WR', 'TE']:
                         total_skipped += 1
                         continue
-                    
-                    # Try to insert
+
+                    week_int = int(week)
+                    weeks_found.add(week_int)
+
+                    # Try to insert with all new columns
                     try:
                         conn.execute("""
-                            INSERT INTO draftkings_pricing 
-                            (player_name, team, position, season, week, salary, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                            INSERT INTO draftkings_pricing
+                            (player_name, team, position, season, week, salary, opponent, opp_rank, opp_pos_rank, projected_fpts, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (
                             name,
                             team,
                             position,
                             2025,
-                            int(week),
+                            week_int,
                             salary,
+                            opponent,
+                            opp_rank,
+                            opp_pos_rank,
+                            projected_fpts,
                             datetime.now(timezone.utc)
                         ))
                         total_inserted += 1
                     except Exception as e:
-                        # If exists, update
+                        # If exists, update with all columns
                         if 'Constraint Error' in str(e) or 'UNIQUE' in str(e):
                             conn.execute("""
-                                UPDATE draftkings_pricing 
-                                SET salary = ?, created_at = ?
+                                UPDATE draftkings_pricing
+                                SET salary = ?, opponent = ?, opp_rank = ?, opp_pos_rank = ?, projected_fpts = ?, created_at = ?
                                 WHERE player_name = ? AND team = ? AND season = ? AND week = ?
                             """, (
                                 salary,
+                                opponent,
+                                opp_rank,
+                                opp_pos_rank,
+                                projected_fpts,
                                 datetime.now(timezone.utc),
                                 name,
                                 team,
                                 2025,
-                                int(week)
+                                week_int
                             ))
                             total_updated += 1
                         else:
                             logging.warning(f"Database error on row {idx}: {e}")
                             total_skipped += 1
-                            
+
                 except Exception as e:
                     logging.warning(f"Error processing row {idx}: {e}")
                     total_skipped += 1
-            
+
             conn.commit()
-        
+
         total_count = total_inserted + total_updated
-        logging.info(f"Excel load complete: {total_inserted} inserted, {total_updated} updated, {total_skipped} skipped")
-        
+        weeks_list = sorted(list(weeks_found))
+        logging.info(f"Excel load complete: {total_inserted} inserted, {total_updated} updated, {total_skipped} skipped, weeks: {weeks_list}")
+
         return DraftKingsResponse(
             success=True,
-            message=f"Successfully loaded {total_count} salary records from Excel (Weeks 1-8)",
+            message=f"Successfully loaded {total_count} salary records from Excel (Weeks {min(weeks_list)}-{max(weeks_list)})",
             records_processed=total_count,
             timestamp=datetime.now(timezone.utc),
             data={
                 'inserted': total_inserted,
                 'updated': total_updated,
-                'skipped': total_skipped
+                'skipped': total_skipped,
+                'weeks': weeks_list
             }
         )
-        
+
     except Exception as e:
         logging.error(f"Error loading Excel salaries: {e}")
         logging.error(traceback.format_exc())
@@ -2584,6 +2625,159 @@ async def load_excel_salaries():
             status_code=500,
             detail=f"Error loading Excel: {str(e)}"
         )
+
+
+@api_router.post("/admin/upload-dk-salaries", response_model=DraftKingsResponse)
+async def upload_dk_salaries(file: UploadFile = File(...)):
+    """
+    Upload a DraftKings salary spreadsheet file.
+    Accepts .xlsx or .xls files with columns: Week, NAME, TEAM, OPP, POS, OPP RANK, OPP POS RANK, $, FPTS
+    """
+    try:
+        # Validate file type
+        if not file.filename.endswith(('.xlsx', '.xls')):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file type. Please upload an Excel file (.xlsx or .xls)"
+            )
+
+        logging.info(f"Uploading DraftKings salary file: {file.filename}")
+
+        # Read file contents into memory
+        contents = await file.read()
+        excel_buffer = io.BytesIO(contents)
+
+        # Read Excel file from buffer
+        df = pd.read_excel(excel_buffer)
+        logging.info(f"Processing uploaded file: {file.filename}, rows: {len(df)}, columns: {df.columns.tolist()}")
+
+        total_inserted = 0
+        total_updated = 0
+        total_skipped = 0
+        weeks_found = set()
+
+        for idx, row in df.iterrows():
+            try:
+                # Extract data - try different column name variations
+                week = row.get('Week', row.get('WEEK', row.get('week', 1)))
+                name = row.get('NAME', row.get('name', row.get('Player', '')))
+                team = row.get('TEAM', row.get('team', row.get('Team', '')))
+                position = row.get('POS', row.get('pos', row.get('Position', '')))
+                salary_raw = row.get('$', row.get('Salary', row.get('salary', row.get('DK $', 0))))
+
+                # Additional columns
+                opponent = row.get('OPP', row.get('opp', row.get('Opponent', '')))
+                opp_rank = row.get('OPP RANK', row.get('opp_rank', row.get('Opp Rank', None)))
+                opp_pos_rank = row.get('OPP POS RANK', row.get('opp_pos_rank', row.get('Opp Pos Rank', None)))
+                projected_fpts = row.get('FPTS', row.get('fpts', row.get('Projected', row.get('Proj', None))))
+
+                # Clean up data
+                if pd.isna(name) or name == '':
+                    total_skipped += 1
+                    continue
+
+                name = str(name).strip()
+                team = str(team).strip().upper() if not pd.isna(team) else 'UNK'
+                position = str(position).strip().upper() if not pd.isna(position) else 'UNK'
+                opponent = str(opponent).strip().upper() if not pd.isna(opponent) else None
+
+                # Parse numeric values
+                opp_rank = int(opp_rank) if not pd.isna(opp_rank) else None
+                opp_pos_rank = int(opp_pos_rank) if not pd.isna(opp_pos_rank) else None
+                projected_fpts = float(projected_fpts) if not pd.isna(projected_fpts) else None
+
+                # Parse salary
+                if pd.isna(salary_raw):
+                    salary = 0
+                elif isinstance(salary_raw, str):
+                    cleaned = ''.join(c for c in salary_raw if c.isdigit() or c in '.,')
+                    cleaned = cleaned.replace(',', '')
+                    try:
+                        salary = int(float(cleaned)) if cleaned else 0
+                    except:
+                        salary = 0
+                else:
+                    try:
+                        salary = int(float(salary_raw))
+                    except:
+                        salary = 0
+
+                if salary == 0 or salary < 2000:
+                    total_skipped += 1
+                    continue
+
+                # Only QB, RB, WR, TE
+                if position not in ['QB', 'RB', 'WR', 'TE']:
+                    total_skipped += 1
+                    continue
+
+                week_int = int(week)
+                weeks_found.add(week_int)
+
+                # Try to insert
+                try:
+                    conn.execute("""
+                        INSERT INTO draftkings_pricing
+                        (player_name, team, position, season, week, salary, opponent, opp_rank, opp_pos_rank, projected_fpts, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        name, team, position, 2025, week_int, salary,
+                        opponent, opp_rank, opp_pos_rank, projected_fpts,
+                        datetime.now(timezone.utc)
+                    ))
+                    total_inserted += 1
+                except Exception as e:
+                    if 'Constraint Error' in str(e) or 'UNIQUE' in str(e):
+                        conn.execute("""
+                            UPDATE draftkings_pricing
+                            SET salary = ?, opponent = ?, opp_rank = ?, opp_pos_rank = ?, projected_fpts = ?, created_at = ?
+                            WHERE player_name = ? AND team = ? AND season = ? AND week = ?
+                        """, (
+                            salary, opponent, opp_rank, opp_pos_rank, projected_fpts,
+                            datetime.now(timezone.utc),
+                            name, team, 2025, week_int
+                        ))
+                        total_updated += 1
+                    else:
+                        logging.warning(f"Database error on row {idx}: {e}")
+                        total_skipped += 1
+
+            except Exception as e:
+                logging.warning(f"Error processing row {idx}: {e}")
+                total_skipped += 1
+
+        conn.commit()
+
+        total_count = total_inserted + total_updated
+        weeks_list = sorted(list(weeks_found)) if weeks_found else []
+
+        logging.info(f"Upload complete: {total_inserted} inserted, {total_updated} updated, {total_skipped} skipped")
+
+        return DraftKingsResponse(
+            success=True,
+            message=f"Successfully uploaded {total_count} salary records from {file.filename}" +
+                    (f" (Weeks {min(weeks_list)}-{max(weeks_list)})" if weeks_list else ""),
+            records_processed=total_count,
+            timestamp=datetime.now(timezone.utc),
+            data={
+                'filename': file.filename,
+                'inserted': total_inserted,
+                'updated': total_updated,
+                'skipped': total_skipped,
+                'weeks': weeks_list
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error uploading DK salaries: {e}")
+        logging.error(traceback.format_exc())
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing upload: {str(e)}"
+        )
+
 
 @api_router.get("/draftkings-pricing-summary")
 async def get_pricing_summary():
@@ -2892,7 +3086,13 @@ async def get_analyzer_data(
                 ws.targets,
                 ws.fantasy_points,
                 COALESCE(CAST(sc.offense_snaps AS INTEGER), 0) as snap_percentage,
-                COALESCE(CAST(dp.salary AS INTEGER), CAST(ws.dk_salary AS INTEGER), 0) as dk_salary
+                COALESCE(CAST(dp.salary AS INTEGER), CAST(ws.dk_salary AS INTEGER), 0) as dk_salary,
+                COALESCE(bdl.rushing_attempts, 0) as rushing_attempts,
+                COALESCE(bdl.passing_completions, 0) as passing_completions,
+                COALESCE(bdl.passing_attempts, 0) as passing_attempts,
+                dp.opp_rank as dk_opp_rank,
+                dp.opp_pos_rank as dk_opp_pos_rank,
+                dp.projected_fpts as dk_projected_fpts
             FROM weekly_stats ws
             LEFT JOIN skill_snap_counts sc ON (
                 (LOWER(TRIM(ws.player_name)) = LOWER(TRIM(sc.player_name))) OR
@@ -2904,6 +3104,13 @@ async def get_analyzer_data(
                 AND ws.team = dp.team
                 AND ws.season = dp.season
                 AND ws.week = dp.week
+            )
+            LEFT JOIN bdl_player_game_stats bdl ON (
+                LOWER(TRIM(ws.player_name)) = LOWER(TRIM(
+                    (SELECT player_name FROM team_rosters WHERE bdl_player_id = bdl.bdl_player_id LIMIT 1)
+                ))
+                AND ws.season = bdl.season
+                AND ws.week = bdl.week
             )
             WHERE ws.season = ? AND ws.week >= ? AND ws.week <= ?
             AND ws.player_id IN ({placeholders})
@@ -2917,6 +3124,9 @@ async def get_analyzer_data(
         player_weeks = {}
         latest_opponent = {}
         latest_salary = {}
+        latest_opp_rank = {}
+        latest_opp_pos_rank = {}
+        latest_dk_proj = {}
 
         for row in weekly_result:
             player_id = row[0]
@@ -2929,6 +3139,20 @@ async def get_analyzer_data(
             # 9:rushing_yards, 10:rushing_tds, 11:receptions
             # 12:receiving_yards, 13:receiving_tds, 14:targets
             # 15:fantasy_points, 16:snap_percentage, 17:dk_salary
+            # 18:rushing_attempts, 19:passing_completions, 20:passing_attempts
+            # 21:dk_opp_rank, 22:dk_opp_pos_rank, 23:dk_projected_fpts
+
+            # Build passing cmpAtt string
+            pass_cmp = int(row[19]) if row[19] else 0
+            pass_att = int(row[20]) if row[20] else 0
+            cmp_att_str = f"{pass_cmp}-{pass_att}" if pass_att > 0 else "-"
+
+            # Get rushing attempts - use BDL data if available, otherwise estimate from yards
+            rushing_yards = int(row[9]) if row[9] else 0
+            rushing_att = int(row[18]) if row[18] else 0
+            # If no BDL data but we have yards, estimate attempts (avg 4.5 ypc)
+            if rushing_att == 0 and rushing_yards > 0:
+                rushing_att = max(1, round(rushing_yards / 4.5))
 
             week_data = {
                 "weekNum": row[4],
@@ -2937,14 +3161,14 @@ async def get_analyzer_data(
                     "fpts": float(row[15]) if row[15] else 0  # fantasy_points
                 },
                 "passing": {
-                    "cmpAtt": "-",  # No attempt data in our schema
+                    "cmpAtt": cmp_att_str,
                     "yds": int(row[6]) if row[6] else 0,  # passing_yards
                     "td": int(row[7]) if row[7] else 0,  # passing_tds
                     "int": int(row[8]) if row[8] else 0  # interceptions
                 },
                 "rushing": {
-                    "att": 0,  # No attempt data in our schema
-                    "yds": int(row[9]) if row[9] else 0,  # rushing_yards
+                    "att": rushing_att,  # rushing_attempts (estimated if not from BDL)
+                    "yds": rushing_yards,  # rushing_yards
                     "td": int(row[10]) if row[10] else 0  # rushing_tds
                 },
                 "receiving": {
@@ -2961,10 +3185,21 @@ async def get_analyzer_data(
                 latest_opponent[player_id] = row[5]
             if row[17] and row[17] > 0:  # dk_salary
                 latest_salary[player_id] = row[17]
+            if row[21]:  # dk_opp_rank
+                latest_opp_rank[player_id] = int(row[21])
+            if row[22]:  # dk_opp_pos_rank
+                latest_opp_pos_rank[player_id] = int(row[22])
+            if row[23]:  # dk_projected_fpts
+                latest_dk_proj[player_id] = float(row[23])
 
         # Build final response
         result = []
         for idx, (player_id, info) in enumerate(player_map.items()):
+            # Calculate average fantasy points per week
+            avg_fpts = round(info["total_fpts"] / max(1, len(player_weeks.get(player_id, []))), 1)
+            # Use DK projection if available, otherwise use average
+            proj_fpts = latest_dk_proj.get(player_id, avg_fpts)
+
             player_data = {
                 "id": player_id or f"player_{idx}",
                 "name": info["name"],
@@ -2973,7 +3208,9 @@ async def get_analyzer_data(
                 "opp": latest_opponent.get(player_id, "TBD"),
                 "matchupTime": "1:00 PM ET",  # Default time
                 "price": int(latest_salary.get(player_id, 0)),
-                "proj": round(info["total_fpts"] / max(1, len(player_weeks.get(player_id, []))), 1),  # Avg as projection
+                "proj": round(proj_fpts, 1),
+                "oppRank": latest_opp_rank.get(player_id),
+                "oppPosRank": latest_opp_pos_rank.get(player_id),
                 "weeks": player_weeks.get(player_id, [])
             }
             result.append(player_data)
@@ -3352,6 +3589,212 @@ async def get_depth_charts(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/depth-chart-enhanced")
+async def get_depth_chart_enhanced(
+    team: Optional[str] = Query(default=None, description="Filter by team abbreviation (required for detailed view)"),
+    season: int = Query(default=2025, description="Season"),
+    position: Optional[str] = Query(default=None, description="Filter by position (QB, RB, WR, TE)")
+):
+    """
+    Get enhanced depth chart data combining official depth charts with snap count data.
+    Returns players ranked by depth position with snap percentages.
+    """
+    try:
+        if not team:
+            # Return list of teams with summary data
+            team_query = """
+                SELECT DISTINCT team
+                FROM depth_charts
+                WHERE season = ?
+                ORDER BY team
+            """
+            teams = conn.execute(team_query, [season]).fetchall()
+            return {
+                "success": True,
+                "message": "Please select a team to view depth chart",
+                "teams": [t[0] for t in teams]
+            }
+
+        # Get the latest week for depth charts
+        week_result = conn.execute("""
+            SELECT MAX(week) FROM depth_charts WHERE season = ? AND team = ?
+        """, [season, team.upper()]).fetchone()
+        week = week_result[0] if week_result and week_result[0] else 1
+
+        # Get snap count week (may differ from depth chart week)
+        snap_week_result = conn.execute("""
+            SELECT MAX(week) FROM snap_counts WHERE season = ? AND team = ?
+        """, [season, team.upper()]).fetchone()
+        snap_week = snap_week_result[0] if snap_week_result and snap_week_result[0] else week
+
+        # Build query for depth chart with snap data
+        query = """
+            SELECT
+                dc.position,
+                dc.depth_position,
+                dc.depth_order,
+                dc.player_name,
+                dc.jersey_number,
+                dc.formation,
+                COALESCE(sc.offense_snaps, 0) as snaps,
+                COALESCE(sc.offense_pct, 0) as snap_pct,
+                dc.gsis_id
+            FROM depth_charts dc
+            LEFT JOIN snap_counts sc ON (
+                LOWER(TRIM(dc.player_name)) = LOWER(TRIM(sc.player_name))
+                AND dc.team = sc.team
+                AND sc.season = ?
+                AND sc.week = ?
+            )
+            WHERE dc.season = ? AND dc.team = ?
+        """
+        params = [season, snap_week, season, team.upper()]
+
+        if position:
+            query += " AND dc.position = ?"
+            params.append(position.upper())
+
+        # Only include skill positions for the depth chart panel
+        query += " AND dc.position IN ('QB', 'RB', 'WR', 'TE')"
+        query += " ORDER BY dc.position, dc.depth_order"
+
+        results = conn.execute(query, params).fetchall()
+
+        # Group by position
+        positions = {}
+        for row in results:
+            pos = row[0]
+            if pos not in positions:
+                positions[pos] = []
+
+            # Determine status based on snap percentage
+            snap_pct = row[7] or 0
+            if snap_pct >= 70:
+                status = "starter"
+            elif snap_pct >= 30:
+                status = "rotational"
+            else:
+                status = "backup"
+
+            positions[pos].append({
+                "rank": row[2],
+                "name": row[3],
+                "jersey": row[4],
+                "formation": row[5],
+                "snaps": row[6],
+                "snap_pct": round(snap_pct, 1),
+                "status": status,
+                "depth_position": row[1],
+                "gsis_id": row[8]
+            })
+
+        # Also get average snap data for context
+        avg_snaps_query = """
+            SELECT position, player_name,
+                   AVG(offense_snaps) as avg_snaps,
+                   AVG(offense_pct) as avg_snap_pct,
+                   COUNT(*) as games
+            FROM snap_counts
+            WHERE season = ? AND team = ? AND position IN ('QB', 'RB', 'WR', 'TE')
+            GROUP BY position, player_name
+            ORDER BY position, avg_snap_pct DESC
+        """
+        avg_results = conn.execute(avg_snaps_query, [season, team.upper()]).fetchall()
+
+        # Create a lookup for season averages
+        season_averages = {}
+        for row in avg_results:
+            pos = row[0]
+            if pos not in season_averages:
+                season_averages[pos] = []
+            season_averages[pos].append({
+                "name": row[1],
+                "avg_snaps": round(row[2], 1) if row[2] else 0,
+                "avg_snap_pct": round(row[3], 1) if row[3] else 0,
+                "games": row[4]
+            })
+
+        return {
+            "success": True,
+            "team": team.upper(),
+            "season": season,
+            "depth_chart_week": week,
+            "snap_data_week": snap_week,
+            "positions": positions,
+            "season_averages": season_averages
+        }
+
+    except Exception as e:
+        logging.error(f"Error fetching enhanced depth chart: {e}")
+        logging.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/weekly-games")
+async def get_weekly_games(
+    season: int = Query(default=2024, description="NFL season year"),
+    week: int = Query(default=1, description="Week number (1-18 for regular season)")
+):
+    """
+    Get NFL game schedule for a specific week.
+    Returns matchups with times and team abbreviations.
+    """
+    try:
+        # Load schedule data using nflreadpy
+        schedule_df = nfl.load_schedules(seasons=[season])
+
+        # Filter to the requested week and regular season games
+        week_games = schedule_df.filter(
+            (schedule_df['week'] == week) &
+            (schedule_df['game_type'] == 'REG')
+        )
+
+        if len(week_games) == 0:
+            return {
+                "success": True,
+                "season": season,
+                "week": week,
+                "games": [],
+                "message": f"No games found for Week {week} of {season} season"
+            }
+
+        # Format the games data
+        games = []
+        for row in week_games.iter_rows(named=True):
+            game_data = {
+                "game_id": row.get('game_id', ''),
+                "away": row.get('away_team', ''),
+                "home": row.get('home_team', ''),
+                "gameday": row.get('gameday', ''),
+                "gametime": row.get('gametime', ''),
+                "weekday": row.get('weekday', ''),
+                "away_score": row.get('away_score'),
+                "home_score": row.get('home_score'),
+                "stadium": row.get('stadium', ''),
+                "roof": row.get('roof', ''),
+                "surface": row.get('surface', ''),
+                "spread_line": row.get('spread_line'),
+                "total_line": row.get('total_line'),
+            }
+            games.append(game_data)
+
+        # Sort games by gameday and gametime
+        games.sort(key=lambda g: (g['gameday'] or '', g['gametime'] or ''))
+
+        return {
+            "success": True,
+            "season": season,
+            "week": week,
+            "game_count": len(games),
+            "games": games
+        }
+
+    except Exception as e:
+        logging.error(f"Error fetching weekly games: {e}")
+        logging.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/rosters")
 async def get_rosters(
     team: Optional[str] = Query(default=None, description="Filter by team abbreviation"),
@@ -3452,6 +3895,10 @@ async def startup_event():
         # Trigger immediate salary scrape on startup to get latest data
         logger.info("Triggering immediate DraftKings salary scrape...")
         asyncio.create_task(scrape_draftkings_salaries_from_fantasypros())
+
+        # Load snap counts on startup to ensure they're populated
+        logger.info("Loading snap counts for 2024-2025 seasons...")
+        asyncio.create_task(load_snap_counts_async([2024, 2025]))
     except Exception as e:
         logger.warning(f"Could not check database status: {e}. Skipping auto-load.")
 

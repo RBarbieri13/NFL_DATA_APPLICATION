@@ -38,6 +38,8 @@ const getStatValue = (weekData, statKey) => {
       return weekData.passing?.yds ?? null;
     case 'passTd':
       return weekData.passing?.td ?? null;
+    case 'passInt':
+      return weekData.passing?.int ?? null;
     default:
       return null;
   }

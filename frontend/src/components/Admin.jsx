@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Database, DollarSign, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { RefreshCw, Database, DollarSign, CheckCircle, XCircle, AlertCircle, Loader2, Upload, FileSpreadsheet } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:10000';
 
@@ -14,6 +14,18 @@ const Admin = () => {
   const [pricingStatus, setPricingStatus] = useState(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState(null);
+  const [lastStatusUpdate, setLastStatusUpdate] = useState(null);
+
+  // File upload state
+  const [uploadFile, setUploadFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Load Excel from server file
+  const [isLoadingExcel, setIsLoadingExcel] = useState(false);
+  const [loadExcelResult, setLoadExcelResult] = useState(null);
 
   // Fetch current data status
   const fetchStatus = useCallback(async () => {
@@ -34,6 +46,8 @@ const Admin = () => {
         const pricing = await pricingResponse.json();
         setPricingStatus(pricing);
       }
+      // Update timestamp on successful fetch
+      setLastStatusUpdate(new Date());
     } catch (err) {
       console.error('Error fetching status:', err);
       setStatusError(err.message);
@@ -42,9 +56,16 @@ const Admin = () => {
     }
   }, []);
 
-  // Load on mount
+  // Load on mount and auto-refresh every 30 seconds
   useEffect(() => {
     fetchStatus();
+
+    // Set up auto-refresh interval
+    const intervalId = setInterval(() => {
+      fetchStatus();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(intervalId);
   }, [fetchStatus]);
 
   // Handle data refresh
@@ -78,6 +99,131 @@ const Admin = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Handle file selection
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+      setUploadFile(file);
+      setUploadResult(null);
+    } else if (file) {
+      setUploadResult({
+        success: false,
+        message: 'Please select an Excel file (.xlsx or .xls)',
+        timestamp: new Date().toLocaleString()
+      });
+    }
+  };
+
+  // Handle drag and drop
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+      setUploadFile(file);
+      setUploadResult(null);
+    } else if (file) {
+      setUploadResult({
+        success: false,
+        message: 'Please drop an Excel file (.xlsx or .xls)',
+        timestamp: new Date().toLocaleString()
+      });
+    }
+  };
+
+  // Upload file to server
+  const handleUpload = async () => {
+    if (!uploadFile) return;
+
+    setIsUploading(true);
+    setUploadResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+
+      const response = await fetch(`${BACKEND_URL}/api/admin/upload-dk-salaries`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Upload failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setUploadResult({
+        success: true,
+        message: result.message,
+        data: result.data,
+        timestamp: new Date().toLocaleString()
+      });
+
+      setUploadFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+      // Refresh status after upload
+      await fetchStatus();
+    } catch (err) {
+      setUploadResult({
+        success: false,
+        message: `Error: ${err.message}`,
+        timestamp: new Date().toLocaleString()
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Load Excel from server file (dk_salaries.xlsx in backend folder)
+  const handleLoadExcelFromServer = async () => {
+    setIsLoadingExcel(true);
+    setLoadExcelResult(null);
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/load-excel-salaries`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Load failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setLoadExcelResult({
+        success: true,
+        message: result.message,
+        data: result.data,
+        timestamp: new Date().toLocaleString()
+      });
+
+      // Refresh status after loading
+      await fetchStatus();
+    } catch (err) {
+      setLoadExcelResult({
+        success: false,
+        message: `Error: ${err.message}`,
+        timestamp: new Date().toLocaleString()
+      });
+    } finally {
+      setIsLoadingExcel(false);
     }
   };
 
@@ -198,10 +344,18 @@ const Admin = () => {
 
         {/* Data Status Section */}
         <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Database className="h-5 w-5 text-green-500" />
-            Player Data Status (2025 Season)
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <Database className="h-5 w-5 text-green-500" />
+              Player Data Status (2025 Season)
+            </h2>
+            {lastStatusUpdate && (
+              <span className="text-xs text-gray-400">
+                Last updated: {lastStatusUpdate.toLocaleTimeString()}
+                <span className="ml-1 text-gray-300">(auto-refreshes every 30s)</span>
+              </span>
+            )}
+          </div>
 
           {statusLoading ? (
             <div className="flex items-center gap-2 text-gray-500">
@@ -323,6 +477,178 @@ const Admin = () => {
               </p>
             </div>
           )}
+        </div>
+
+        {/* DraftKings Salary Import */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Upload className="h-5 w-5 text-blue-600" />
+            Import DraftKings Salaries
+          </h2>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Upload New File */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Upload Weekly Salary File</h3>
+
+              {/* Drop Zone */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer ${
+                  isDragging
+                    ? 'border-blue-500 bg-blue-50'
+                    : uploadFile
+                    ? 'border-green-400 bg-green-50'
+                    : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+                }`}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <FileSpreadsheet className={`h-10 w-10 mx-auto mb-3 ${uploadFile ? 'text-green-600' : 'text-gray-400'}`} />
+
+                {uploadFile ? (
+                  <div>
+                    <p className="font-medium text-green-800">{uploadFile.name}</p>
+                    <p className="text-sm text-green-600 mt-1">
+                      {(uploadFile.size / 1024).toFixed(1)} KB - Ready to upload
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="font-medium text-gray-700">Drop Excel file here or click to browse</p>
+                    <p className="text-sm text-gray-500 mt-1">Supports .xlsx and .xls files</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Upload Button */}
+              <button
+                onClick={handleUpload}
+                disabled={!uploadFile || isUploading}
+                className={`mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-white transition-all ${
+                  !uploadFile || isUploading
+                    ? 'bg-gray-300 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg'
+                }`}
+              >
+                {isUploading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Upload className="h-5 w-5" />
+                )}
+                <span>{isUploading ? 'Uploading...' : 'Upload Salaries'}</span>
+              </button>
+
+              {/* Upload Result */}
+              {uploadResult && (
+                <div className={`mt-4 p-3 rounded-lg ${
+                  uploadResult.success
+                    ? 'bg-green-50 border border-green-200'
+                    : 'bg-red-50 border border-red-200'
+                }`}>
+                  <div className="flex items-start gap-2">
+                    {uploadResult.success ? (
+                      <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                    )}
+                    <div>
+                      <p className={`font-medium ${uploadResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                        {uploadResult.message}
+                      </p>
+                      {uploadResult.data && (
+                        <p className="text-xs text-gray-600 mt-1">
+                          Inserted: {uploadResult.data.inserted} | Updated: {uploadResult.data.updated} | Skipped: {uploadResult.data.skipped}
+                          {uploadResult.data.weeks?.length > 0 && ` | Weeks: ${uploadResult.data.weeks.join(', ')}`}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">{uploadResult.timestamp}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Load from Server File */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Load from Server</h3>
+
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <FileSpreadsheet className="h-8 w-8 text-green-600" />
+                  <div>
+                    <p className="font-medium text-gray-800">dk_salaries.xlsx</p>
+                    <p className="text-xs text-gray-500">Master salary file on server</p>
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-600 mb-4">
+                  Load salaries from the master Excel file stored in the backend folder.
+                  This file contains historical DK salaries for the 2025 season.
+                </p>
+
+                <button
+                  onClick={handleLoadExcelFromServer}
+                  disabled={isLoadingExcel}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-white transition-all ${
+                    isLoadingExcel
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-green-600 hover:bg-green-700 shadow-md hover:shadow-lg'
+                  }`}
+                >
+                  {isLoadingExcel ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Database className="h-5 w-5" />
+                  )}
+                  <span>{isLoadingExcel ? 'Loading...' : 'Load Server File'}</span>
+                </button>
+
+                {/* Load Result */}
+                {loadExcelResult && (
+                  <div className={`mt-4 p-3 rounded-lg ${
+                    loadExcelResult.success
+                      ? 'bg-green-50 border border-green-200'
+                      : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <div className="flex items-start gap-2">
+                      {loadExcelResult.success ? (
+                        <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                      )}
+                      <div>
+                        <p className={`font-medium text-sm ${loadExcelResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                          {loadExcelResult.message}
+                        </p>
+                        {loadExcelResult.data && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            Inserted: {loadExcelResult.data.inserted} | Updated: {loadExcelResult.data.updated} | Skipped: {loadExcelResult.data.skipped}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">{loadExcelResult.timestamp}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Expected Format Info */}
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <p className="text-sm text-blue-800">
+              <strong>Expected file format:</strong> Excel file with columns: Week, NAME, TEAM, OPP, POS, OPP RANK, OPP POS RANK, $, FPTS
+            </p>
+          </div>
         </div>
 
         {/* Quick Actions */}

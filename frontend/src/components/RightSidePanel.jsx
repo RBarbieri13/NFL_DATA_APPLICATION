@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, AlertTriangle, Users, BarChart3 } from 'lucide-react';
 import InjuryPanel from './InjuryPanel';
+import DepthChartPanel from './DepthChartPanel';
 
 // Tab configuration
 const TABS = [
@@ -55,30 +56,17 @@ const TeamAnalysisPanel = ({ teamFilter }) => (
   </div>
 );
 
-// Placeholder for Depth Chart
-const DepthChartPanel = ({ teamFilter, positionFilter }) => (
-  <div className="p-4">
-    <div className="text-center py-8 text-gray-500">
-      <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-      <h3 className="font-semibold text-lg mb-2">Depth Chart</h3>
-      <p className="text-sm">
-        {teamFilter
-          ? `Depth chart for ${teamFilter} coming soon...`
-          : 'Select a team to view depth chart'
-        }
-      </p>
-    </div>
-  </div>
-);
+// DepthChartPanel is now imported from ./DepthChartPanel
 
-// Main Right Side Panel Component - Fixed to right edge of screen
+// Main Right Side Panel Component - Fixed to right edge of screen with resizable width
 const RightSidePanel = ({
   teamFilter = null,
   positionFilter = null,
   isOpen,
   activeTab,
   onTabClick,
-  onClose
+  onClose,
+  width = 350  // Default width, can be controlled by parent for resizing
 }) => {
   const activeTabConfig = TABS.find(t => t.id === activeTab);
   const ActiveIcon = activeTabConfig?.icon || AlertTriangle;
@@ -86,20 +74,20 @@ const RightSidePanel = ({
   return (
     <>
       {/* Fixed position container on right edge */}
-      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-50 flex items-center">
+      <div className="fixed right-0 top-0 bottom-0 z-40 flex items-stretch">
         {/* Sliding Panel Content - slides from right */}
         <div
           className={`
-            bg-white border border-gray-300 shadow-2xl rounded-l-lg
-            transition-all duration-300 ease-in-out overflow-hidden
-            ${isOpen ? 'w-96 opacity-100' : 'w-0 opacity-0'}
+            bg-white border-l border-gray-300 shadow-2xl
+            transition-opacity duration-200 ease-in-out overflow-hidden
+            ${isOpen ? 'opacity-100' : 'w-0 opacity-0'}
           `}
-          style={{ height: '70vh', maxHeight: '700px' }}
+          style={{ width: isOpen ? width : 0, height: '100vh' }}
         >
           {isOpen && (
-            <div className="w-96 h-full flex flex-col">
+            <div className="h-full flex flex-col" style={{ width }}>
               {/* Panel Header */}
-              <div className="bg-slate-800 text-white px-3 py-2 flex items-center justify-between flex-shrink-0 rounded-tl-lg">
+              <div className="bg-slate-800 text-white px-3 py-2 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <ActiveIcon className={`w-4 h-4 ${activeTabConfig?.color}`} />
                   <span className="font-bold text-sm">{activeTabConfig?.label}</span>
@@ -119,7 +107,7 @@ const RightSidePanel = ({
                     teamFilter={teamFilter}
                     positionFilter={positionFilter}
                     compact={false}
-                    maxHeight="calc(70vh - 50px)"
+                    maxHeight="calc(100vh - 50px)"
                     showHeader={false}
                     fantasyOnly={true}
                   />
@@ -136,7 +124,7 @@ const RightSidePanel = ({
         </div>
 
         {/* Vertical Tab Bar - file folder tabs stacked vertically on right edge */}
-        <div className="flex flex-col gap-1 bg-slate-800 py-2 px-1 rounded-l-lg shadow-lg">
+        <div className="flex flex-col justify-center gap-1 bg-slate-800 py-2 px-1 shadow-lg">
           {TABS.map(tab => (
             <TabButton
               key={tab.id}
