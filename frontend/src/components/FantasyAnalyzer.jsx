@@ -70,6 +70,7 @@ const DEFAULT_COL_WIDTHS = {
   trend: 105,
   num: 35,
   fpts: 45,
+  dk: 45,
   cmpAtt: 55,
   passYds: 40,
   passTd: 35,
@@ -87,6 +88,7 @@ const DEFAULT_COL_WIDTHS = {
 const MIN_COL_WIDTHS = {
   num: 25,
   fpts: 35,
+  dk: 35,
   cmpAtt: 45,
   passYds: 30,
   passTd: 25,
@@ -100,13 +102,21 @@ const MIN_COL_WIDTHS = {
   recTd: 25
 };
 
+// Format salary as "$5.5k" format
+const formatSalaryShort = (salary) => {
+  if (!salary || salary <= 0) return '-';
+  const thousands = salary / 1000;
+  return `$${thousands.toFixed(1)}k`;
+};
+
 // Column definitions for visibility control
 const COLUMN_CATEGORIES = {
   summary: {
     label: 'Summary',
     columns: [
       { key: 'num', label: '#' },
-      { key: 'fpts', label: 'FPTS' }
+      { key: 'fpts', label: 'FPTS' },
+      { key: 'dk', label: 'DK$' }
     ]
   },
   passing: {
@@ -496,6 +506,7 @@ const FantasyAnalyzer = () => {
   const [visibleColumns, setVisibleColumns] = useState({
     num: true,
     fpts: true,
+    dk: true,
     cmpAtt: true,
     passYds: true,
     passTd: true,
@@ -644,6 +655,7 @@ const FantasyAnalyzer = () => {
       let count = 0;
       if (visibleColumns.num) count++;
       if (visibleColumns.fpts) count++;
+      if (visibleColumns.dk) count++;
       return Math.max(1, count);
     }
     return getVisibleStatColsCount();
@@ -653,7 +665,7 @@ const FantasyAnalyzer = () => {
   const getVisiblePassingCols = () => ['cmpAtt', 'passYds', 'passTd', 'int'].filter(k => visibleColumns[k]).length;
   const getVisibleRushingCols = () => ['rushAtt', 'rushYds', 'rushTd'].filter(k => visibleColumns[k]).length;
   const getVisibleReceivingCols = () => ['tgts', 'rec', 'recYds', 'recTd'].filter(k => visibleColumns[k]).length;
-  const getVisibleSummaryCols = () => ['num', 'fpts'].filter(k => visibleColumns[k]).length;
+  const getVisibleSummaryCols = () => ['num', 'fpts', 'dk'].filter(k => visibleColumns[k]).length;
 
   // Calculate weeks to show
   const weeksToShow = useMemo(() => {
@@ -938,9 +950,10 @@ const FantasyAnalyzer = () => {
         const cells = [];
         // Summary columns
         if (visibleColumns.num) cells.push(<DataCell key={`empty-${weekNum}-num`} className="bg-gray-100">-</DataCell>);
-        if (visibleColumns.fpts) {
+        if (visibleColumns.fpts) cells.push(<DataCell key={`empty-${weekNum}-fpts`} className="bg-gray-100">-</DataCell>);
+        if (visibleColumns.dk) {
           const style = !isExpanded && !isLastWeek ? weekEndBorderStyle : {};
-          cells.push(<DataCell key={`empty-${weekNum}-fpts`} className="bg-gray-100" style={style}>-</DataCell>);
+          cells.push(<DataCell key={`empty-${weekNum}-dk`} className="bg-gray-100" style={style}>-</DataCell>);
         }
 
         if (isExpanded) {
@@ -986,15 +999,27 @@ const FantasyAnalyzer = () => {
         );
       }
       if (visibleColumns.fpts) {
-        const baseStyle = !isExpanded && !isLastWeek ? weekEndBorderStyle : {};
         cells.push(
           <DataCell 
             key={`${weekNum}-fpts`} 
             className="font-bold" 
             width={colWidths.fpts} 
-            style={{ ...baseStyle, backgroundColor: fptsBgColor || '#f3f4f6' }}
+            style={{ backgroundColor: fptsBgColor || '#f3f4f6' }}
           >
             {weekData.misc?.fpts?.toFixed(1) || '-'}
+          </DataCell>
+        );
+      }
+      if (visibleColumns.dk) {
+        const baseStyle = !isExpanded && !isLastWeek ? weekEndBorderStyle : {};
+        cells.push(
+          <DataCell 
+            key={`${weekNum}-dk`} 
+            className="font-semibold text-green-700" 
+            width={colWidths.dk} 
+            style={{ ...baseStyle, backgroundColor: '#f3f4f6' }}
+          >
+            {formatSalaryShort(weekData.misc?.dk)}
           </DataCell>
         );
       }
@@ -1390,9 +1415,21 @@ const FantasyAnalyzer = () => {
                       className="bg-gray-500 text-white"
                       width={colWidths.fpts}
                       onClick={() => handleSort('fpts', week)}
-                      style={!expandedWeeks[week] && !isLastWeek ? { borderRight: '3px solid white' } : {}}
                     >
                       FPTS
+                    </ClickableHeaderCell>
+                  );
+                }
+                if (visibleColumns.dk) {
+                  cells.push(
+                    <ClickableHeaderCell
+                      key={`${week}-dk`}
+                      className="bg-gray-500 text-white"
+                      width={colWidths.dk}
+                      onClick={() => handleSort('dk', week)}
+                      style={!expandedWeeks[week] && !isLastWeek ? { borderRight: '3px solid white' } : {}}
+                    >
+                      DK$
                     </ClickableHeaderCell>
                   );
                 }
@@ -1541,7 +1578,7 @@ const FantasyAnalyzer = () => {
                         <span>{player.opp}</span>
                       </div>
                     </DataCell>
-                    <DataCell className="text-right" width={colWidths.price}>{formatCurrency(player.price)}</DataCell>
+                    <DataCell className="text-right text-green-700 font-semibold" width={colWidths.price}>{formatSalaryShort(player.price)}</DataCell>
                     <DataCell className="font-bold" width={colWidths.proj}>{player.proj?.toFixed(1) || '-'}</DataCell>
 
                     {/* Weekly Data columns */}

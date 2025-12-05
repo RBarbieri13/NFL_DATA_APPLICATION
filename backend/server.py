@@ -201,6 +201,35 @@ def normalize_player_name(name: str) -> str:
     
     return normalized
 
+def get_current_nfl_week(season: int = 2025) -> int:
+    """
+    Calculate the current NFL week based on today's date.
+    NFL 2025 regular season starts Thursday, September 4, 2025.
+    Each week runs Thursday to Wednesday.
+    """
+    # NFL 2025 season start date (Week 1 Thursday)
+    season_start_dates = {
+        2024: date(2024, 9, 5),   # 2024 season started Sept 5
+        2025: date(2025, 9, 4),   # 2025 season starts Sept 4
+    }
+    
+    season_start = season_start_dates.get(season, date(season, 9, 4))
+    today = date.today()
+    
+    # If before season start, return week 1
+    if today < season_start:
+        return 1
+    
+    # Calculate days since season start
+    days_since_start = (today - season_start).days
+    
+    # Each NFL week is 7 days, starting from Thursday
+    current_week = (days_since_start // 7) + 1
+    
+    # Cap at week 18 (regular season) or 22 (including playoffs)
+    return min(current_week, 18)
+
+
 def calculate_fantasy_points(stats: Dict) -> float:
     """Calculate DraftKings PPR fantasy points"""
     points = 0
@@ -3120,10 +3149,14 @@ async def get_analyzer_data(
         weekly_params = [season, week_start, week_end] + player_ids
         weekly_result = conn.execute(weekly_query, weekly_params).fetchall()
 
+        # Get current NFL week for price lookup
+        current_nfl_week = get_current_nfl_week(season)
+        
         # Group weekly data by player
         player_weeks = {}
         latest_opponent = {}
         latest_salary = {}
+        current_week_salary = {}  # Track salary for current NFL week
         latest_opp_rank = {}
         latest_opp_pos_rank = {}
         latest_dk_proj = {}
@@ -3154,11 +3187,15 @@ async def get_analyzer_data(
             if rushing_att == 0 and rushing_yards > 0:
                 rushing_att = max(1, round(rushing_yards / 4.5))
 
+            # Get dk_salary for this week
+            week_dk_salary = int(row[17]) if row[17] and row[17] > 0 else 0
+            
             week_data = {
                 "weekNum": row[4],
                 "misc": {
                     "num": int(row[16]) if row[16] else 0,  # snap_percentage
-                    "fpts": float(row[15]) if row[15] else 0  # fantasy_points
+                    "fpts": float(row[15]) if row[15] else 0,  # fantasy_points
+                    "dk": week_dk_salary  # DraftKings salary for this week
                 },
                 "passing": {
                     "cmpAtt": cmp_att_str,
@@ -3185,6 +3222,9 @@ async def get_analyzer_data(
                 latest_opponent[player_id] = row[5]
             if row[17] and row[17] > 0:  # dk_salary
                 latest_salary[player_id] = row[17]
+                # Track current week's salary specifically
+                if row[4] == current_nfl_week:
+                    current_week_salary[player_id] = int(row[17])
             if row[21]:  # dk_opp_rank
                 latest_opp_rank[player_id] = int(row[21])
             if row[22]:  # dk_opp_pos_rank
@@ -3200,6 +3240,9 @@ async def get_analyzer_data(
             # Use DK projection if available, otherwise use average
             proj_fpts = latest_dk_proj.get(player_id, avg_fpts)
 
+            # Use current week's salary if available, otherwise fall back to latest
+            price = current_week_salary.get(player_id, latest_salary.get(player_id, 0))
+            
             player_data = {
                 "id": player_id or f"player_{idx}",
                 "name": info["name"],
@@ -3207,11 +3250,12 @@ async def get_analyzer_data(
                 "team": info["team"],
                 "opp": latest_opponent.get(player_id, "TBD"),
                 "matchupTime": "1:00 PM ET",  # Default time
-                "price": int(latest_salary.get(player_id, 0)),
+                "price": int(price),
                 "proj": round(proj_fpts, 1),
                 "oppRank": latest_opp_rank.get(player_id),
                 "oppPosRank": latest_opp_pos_rank.get(player_id),
-                "weeks": player_weeks.get(player_id, [])
+                "weeks": player_weeks.get(player_id, []),
+                "currentWeek": current_nfl_week  # Include current NFL week
             }
             result.append(player_data)
 
