@@ -1211,8 +1211,8 @@ const FantasyAnalyzer = () => {
                   </WeekResizableHeader>
                 );
               })}
-              {/* Trend column header - rightmost position, matches other headers */}
-              <ClickableHeaderCell className="bg-gray-300 text-black text-lg">Trend</ClickableHeaderCell>
+              {/* Trend column header - rightmost position, matches week headers */}
+              <ClickableHeaderCell className="bg-slate-800 text-white border-b-0 text-lg">Trend</ClickableHeaderCell>
             </tr>
 
             {/* Header Row 2: Sub-Categories (Passing, Rushing, etc.) */}
