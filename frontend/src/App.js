@@ -1143,8 +1143,22 @@ const FantasyDashboard = () => {
                 </div>
               </div>
             ) : (
-              <div className="flex-1 overflow-hidden">
-                <AggregateDataTable />
+              <div className="flex-1 overflow-hidden p-4 bg-gray-50">
+                <div className="ag-theme-alpine" style={{ height: 'calc(100vh - 200px)', minHeight: '400px', width: '100%' }}>
+                  <AgGridReact
+                    rowData={filteredPlayers}
+                    columnDefs={columnDefs}
+                    defaultColDef={defaultColDef}
+                    onGridReady={onGridReady}
+                    rowHeight={32}
+                    headerHeight={36}
+                    rowSelection="none"
+                    pagination={true}
+                    paginationPageSize={50}
+                    animateRows={false}
+                    suppressRowTransform={true}
+                  />
+                </div>
               </div>
             )}
           </main>
