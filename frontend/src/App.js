@@ -1079,18 +1079,18 @@ const FantasyDashboard = () => {
               />
 
               {/* Grid Container */}
-              <div className="flex-1 overflow-hidden p-4 bg-gray-50">
-                <div className="ag-theme-alpine" style={{ height: 'calc(100vh - 280px)', minHeight: '400px', width: '100%' }}>
+              <div className="flex-1 overflow-hidden p-2 bg-gray-100">
+                <div className="ag-theme-alpine dark-headers" style={{ height: 'calc(100vh - 260px)', minHeight: '400px', width: '100%' }}>
                   <AgGridReact
                     rowData={filteredPlayers}
                     columnDefs={columnDefs}
                     defaultColDef={defaultColDef}
                     onGridReady={onGridReady}
-                    rowHeight={32}
-                    headerHeight={36}
+                    rowHeight={26}
+                    headerHeight={28}
                     rowSelection="none"
                     pagination={true}
-                    paginationPageSize={50}
+                    paginationPageSize={100}
                     animateRows={false}
                     suppressRowTransform={true}
                   />

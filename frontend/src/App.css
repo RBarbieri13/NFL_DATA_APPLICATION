@@ -737,3 +737,174 @@ body {
 .trend-bar-chart {
   flex-shrink: 0;
 }
+
+/* ============================================
+   Dark Theme AG Grid - Matches Fantasy Analyzer
+   ============================================ */
+.dark-headers.ag-theme-alpine {
+  --ag-header-background-color: #1f2937;
+  --ag-header-foreground-color: #ffffff;
+  --ag-border-color: #374151;
+  --ag-row-hover-color: #f3f4f6;
+  --ag-selected-row-background-color: #dbeafe;
+  --ag-font-family: 'Inter', sans-serif;
+  --ag-font-size: 11px;
+  --ag-header-height: 28px;
+  --ag-row-height: 26px;
+  --ag-cell-horizontal-padding: 4px;
+  --ag-cell-vertical-padding: 2px;
+}
+
+/* Dark header cells */
+.dark-headers.ag-theme-alpine .ag-header {
+  background-color: #1f2937;
+  border-bottom: 2px solid #3b82f6;
+}
+
+.dark-headers.ag-theme-alpine .ag-header-cell {
+  background-color: #374151;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  border-right: 1px solid #4b5563;
+  padding: 4px 6px;
+}
+
+.dark-headers.ag-theme-alpine .ag-header-cell:hover {
+  background-color: #4b5563;
+}
+
+/* Dark header group cells */
+.dark-headers.ag-theme-alpine .ag-header-group-cell {
+  background-color: #1f2937;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid #3b82f6;
+  padding: 4px 6px;
+}
+
+/* Override group header colors for dark theme */
+.dark-headers .player-info-group-header {
+  background-color: #374151 !important;
+  color: #ffffff !important;
+  border-bottom: 2px solid #6b7280 !important;
+}
+
+.dark-headers .basic-stats-group-header {
+  background-color: #92400e !important;
+  color: #ffffff !important;
+  border-bottom: 2px solid #f59e0b !important;
+}
+
+.dark-headers .passing-group-header {
+  background-color: #1e40af !important;
+  color: #ffffff !important;
+  border-bottom: 2px solid #3b82f6 !important;
+}
+
+.dark-headers .rushing-group-header {
+  background-color: #15803d !important;
+  color: #ffffff !important;
+  border-bottom: 2px solid #10b981 !important;
+}
+
+.dark-headers .receiving-group-header {
+  background-color: #7c3aed !important;
+  color: #ffffff !important;
+  border-bottom: 2px solid #8b5cf6 !important;
+}
+
+/* Dark floating filter styling */
+.dark-headers.ag-theme-alpine .ag-floating-filter {
+  background-color: #374151;
+  border-bottom: 1px solid #4b5563;
+}
+
+.dark-headers.ag-theme-alpine .ag-floating-filter-input {
+  background-color: #4b5563;
+  color: #ffffff;
+  border: 1px solid #6b7280;
+  border-radius: 3px;
+  font-size: 10px;
+  padding: 2px 4px;
+}
+
+.dark-headers.ag-theme-alpine .ag-floating-filter-input::placeholder {
+  color: #9ca3af;
+}
+
+.dark-headers.ag-theme-alpine .ag-floating-filter-button {
+  color: #9ca3af;
+}
+
+.dark-headers.ag-theme-alpine .ag-floating-filter-button:hover {
+  color: #ffffff;
+}
+
+/* Compact row styling */
+.dark-headers.ag-theme-alpine .ag-row {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dark-headers.ag-theme-alpine .ag-row-even {
+  background-color: #ffffff;
+}
+
+.dark-headers.ag-theme-alpine .ag-row-odd {
+  background-color: #f9fafb;
+}
+
+.dark-headers.ag-theme-alpine .ag-row:hover {
+  background-color: #f3f4f6 !important;
+}
+
+/* Compact cell styling */
+.dark-headers.ag-theme-alpine .ag-cell {
+  padding: 2px 4px;
+  font-size: 11px;
+  line-height: 1.2;
+  border-right: 1px solid #f3f4f6;
+}
+
+/* Pinned column styling for dark theme */
+.dark-headers.ag-theme-alpine .ag-pinned-left-header {
+  background-color: #1f2937;
+  border-right: 2px solid #3b82f6;
+}
+
+.dark-headers.ag-theme-alpine .ag-pinned-left-header .ag-header-cell {
+  background-color: #374151;
+}
+
+.dark-headers.ag-theme-alpine .ag-pinned-left-cols-container {
+  border-right: 2px solid #e5e7eb;
+}
+
+/* Sort indicator styling for dark theme */
+.dark-headers.ag-theme-alpine .ag-sort-ascending-icon,
+.dark-headers.ag-theme-alpine .ag-sort-descending-icon {
+  color: #60a5fa;
+}
+
+/* Menu icon styling for dark theme */
+.dark-headers.ag-theme-alpine .ag-header-icon {
+  color: #9ca3af;
+}
+
+.dark-headers.ag-theme-alpine .ag-header-icon:hover {
+  color: #ffffff;
+}
+
+/* Pagination styling for dark theme */
+.dark-headers.ag-theme-alpine .ag-paging-panel {
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  font-size: 10px;
+  padding: 4px 8px;
+  height: 32px;
+}
