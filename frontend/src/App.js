@@ -992,159 +992,95 @@ const FantasyDashboard = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Professional Header with Texture */}
-        <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 shadow-2xl border-b-4 border-blue-500">
+        {/* Unified Header - Matches Fantasy Analyzer style */}
+        <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 shadow-md border-b-2 border-blue-500">
           <div className="relative overflow-hidden">
-            {/* Texture overlay */}
-            <div className="absolute inset-0 bg-black/20 bg-[radial-gradient(circle_at_20%_80%,_rgba(120,_119,_198,_0.3),_transparent_50%)]"></div>
-            <div className="absolute inset-0 bg-[linear-gradient(45deg,_transparent_25%,_rgba(255,255,255,0.02)_25%,_rgba(255,255,255,0.02)_50%,_transparent_50%,_transparent_75%,_rgba(255,255,255,0.02)_75%)] bg-[length:4px_4px]"></div>
-
-            <div className="relative max-w-full mx-auto px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-500/20 rounded-lg shadow-lg border border-blue-400/30">
-                      <img
-                        src="https://static.vecteezy.com/system/resources/thumbnails/053/257/088/small/fantasy-football-logo-white-line-stars-and-shield-vector.jpg"
-                        alt="Fantasy Football Logo"
-                        className="h-8 w-8 object-contain filter brightness-0 invert"
-                      />
-                    </div>
-                    <div>
-                      <h1 className="text-2xl font-bold text-white tracking-tight">NFL DK DASHBOARD</h1>
-                      <p className="text-blue-200 text-sm">DraftKings Analytics & Player Stats</p>
-                    </div>
-                  </div>
-                  <div className="hidden md:flex items-center space-x-2">
-                    <Badge className="bg-blue-500/20 text-blue-100 border-blue-400 text-xs px-3 py-1">
-                      DraftKings PPR
-                    </Badge>
-                    <Badge className="bg-green-500/20 text-green-100 border-green-400 text-xs px-3 py-1">
-                      Live Data
-                    </Badge>
-                    <Badge
-                      className="bg-purple-500/20 text-purple-100 border-purple-400 text-xs px-3 py-1 cursor-pointer hover:bg-purple-500/30 transition-colors"
-                      onClick={() => setShowOptimizerFilter(!showOptimizerFilter)}
-                    >
-                      Optimizer {showOptimizerFilter ? '✓' : '(Beta)'}
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Button
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-lg text-xs h-9"
-                    onClick={() => {
-                      refreshData();
-                      toast.success('Refreshing data...', { duration: 1500 });
-                    }}
-                    disabled={refreshing}
-                  >
-                    <RefreshCw className={`h-3 w-3 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                    {refreshing ? 'Syncing...' : 'Sync Data (⌘R)'}
-                  </Button>
+            <div className="absolute inset-0 bg-black/20"></div>
+            <div className="relative max-w-full mx-auto px-4 py-1">
+              <div className="flex items-center gap-3">
+                <img
+                  src="/logo.png"
+                  alt="Rube"
+                  className="h-10 object-contain"
+                />
+                <div>
+                  <h1 className="text-lg font-bold text-white tracking-tight">
+                    {activeTab === 'trend-tool' ? 'Trend Tool' : 'Data Table'}
+                  </h1>
+                  <p className="text-blue-200 text-[10px]">
+                    {activeTab === 'trend-tool' ? 'Player Performance Trends' : 'DraftKings Player Stats & Analytics'}
+                  </p>
                 </div>
               </div>
             </div>
           </div>
-          {/* Top Navigation Bar */}
-          <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 shrink-0 z-10">
-            <div className="flex items-center gap-4">
-              <h1 className="text-xl font-bold text-gray-800">
-                {activeTab === 'trend-tool' ? 'Trend Tool' : 'Player Optimizer'}
-              </h1>
-              {activeTab === 'data-table' && (
-                <div className="flex items-center bg-gray-100 rounded-md px-3 py-1.5 w-64">
-                  <Search className="h-4 w-4 text-gray-500 mr-2" />
-                  <input
-                    type="text"
-                    placeholder="Search players, teams..."
-                    className="bg-transparent border-none focus:outline-none text-sm w-full"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  {searchTerm && (
-                    <button onClick={() => setSearchTerm('')} className="text-gray-400 hover:text-gray-600">
-                      <span className="sr-only">Clear</span>
-                      &times;
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+        </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg mr-2">
-                <button
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${isPPR ? 'bg-white shadow-sm text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
-                  onClick={() => setIsPPR(true)}
-                >
-                  PPR
-                </button>
-                <button
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${!isPPR ? 'bg-white shadow-sm text-blue-700' : 'text-gray-500 hover:text-gray-700'}`}
-                  onClick={() => setIsPPR(false)}
-                >
-                  Half PPR
-                </button>
-              </div>
+        {/* Content Area */}
+        <main className="flex-1 overflow-hidden relative flex flex-col">
+          {activeTab === 'trend-tool' ? (
+            <div className="flex flex-col h-full w-full bg-white">
+              {/* Trend Tool Filters - Using AnalyzerFilters component */}
+              <AnalyzerFilters
+                selectedPos={trendFilters.position}
+                selectedTeam={trendFilters.team}
+                season={trendFilters.season}
+                selectedSlate={trendFilters.slate}
+                weekFrom={trendFilters.startWeek}
+                weekTo={trendFilters.endWeek}
+                salaryMin={trendFilters.salaryMin}
+                salaryMax={trendFilters.salaryMax}
+                onPosChange={(val) => setTrendFilters({...trendFilters, position: val})}
+                onTeamChange={(val) => setTrendFilters({...trendFilters, team: val})}
+                onSeasonChange={(val) => setTrendFilters({...trendFilters, season: val})}
+                onSlateChange={(val) => setTrendFilters({...trendFilters, slate: val})}
+                onWeekFromChange={(val) => setTrendFilters({...trendFilters, startWeek: val})}
+                onWeekToChange={(val) => setTrendFilters({...trendFilters, endWeek: val})}
+                onSalaryMinChange={(val) => setTrendFilters({...trendFilters, salaryMin: val})}
+                onSalaryMaxChange={(val) => setTrendFilters({...trendFilters, salaryMax: val})}
+                playerCount={trendData.length}
+                loading={trendLoading}
+              />
 
-              <Button variant="outline" size="sm" onClick={refreshData} disabled={refreshing}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-
-              {activeTab === 'data-table' && (
-                <Button variant="outline" size="sm" onClick={exportData}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-              )}
-            </div>
-          </header>
-
-          {/* Content Area */}
-          <main className="flex-1 overflow-hidden relative flex flex-col">
-            {activeTab === 'trend-tool' ? (
-              <div className="flex flex-col h-full w-full bg-white">
-                {/* Trend Tool Filters - Using AnalyzerFilters component */}
-                <AnalyzerFilters
-                  selectedPos={trendFilters.position}
-                  selectedTeam={trendFilters.team}
-                  season={trendFilters.season}
-                  selectedSlate={trendFilters.slate}
-                  weekFrom={trendFilters.startWeek}
-                  weekTo={trendFilters.endWeek}
-                  salaryMin={trendFilters.salaryMin}
-                  salaryMax={trendFilters.salaryMax}
-                  onPosChange={(val) => setTrendFilters({...trendFilters, position: val})}
-                  onTeamChange={(val) => setTrendFilters({...trendFilters, team: val})}
-                  onSeasonChange={(val) => setTrendFilters({...trendFilters, season: val})}
-                  onSlateChange={(val) => setTrendFilters({...trendFilters, slate: val})}
-                  onWeekFromChange={(val) => setTrendFilters({...trendFilters, startWeek: val})}
-                  onWeekToChange={(val) => setTrendFilters({...trendFilters, endWeek: val})}
-                  onSalaryMinChange={(val) => setTrendFilters({...trendFilters, salaryMin: val})}
-                  onSalaryMaxChange={(val) => setTrendFilters({...trendFilters, salaryMax: val})}
-                  playerCount={trendData.length}
-                  loading={trendLoading}
-                />
-
-                {/* Grid Container - AG Grid requires explicit pixel height */}
-                <div className="flex-1 overflow-hidden p-4 bg-gray-50">
-                  <div style={{ height: 'calc(100vh - 350px)', minHeight: '400px', width: '100%' }}>
-                    <TrendToolGrid
-                      data={trendData}
-                      startWeek={trendFilters.startWeek}
-                      endWeek={trendFilters.endWeek}
-                      isPPR={isPPR}
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : (
+              {/* Grid Container - AG Grid requires explicit pixel height */}
               <div className="flex-1 overflow-hidden p-4 bg-gray-50">
-                <div className="ag-theme-alpine" style={{ height: 'calc(100vh - 200px)', minHeight: '400px', width: '100%' }}>
+                <div style={{ height: 'calc(100vh - 280px)', minHeight: '400px', width: '100%' }}>
+                  <TrendToolGrid
+                    data={trendData}
+                    startWeek={trendFilters.startWeek}
+                    endWeek={trendFilters.endWeek}
+                    isPPR={isPPR}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col h-full w-full bg-white">
+              {/* DataTable Filters - Same as Fantasy Analyzer */}
+              <AnalyzerFilters
+                selectedPos={filters.position}
+                selectedTeam={filters.team === 'all' ? 'All' : filters.team}
+                season={parseInt(filters.season)}
+                selectedSlate="Main"
+                weekFrom={filters.weekStart || parseInt(filters.week) || 1}
+                weekTo={filters.weekEnd || parseInt(filters.week) || 4}
+                salaryMin={parseInt(filters.minSalary) || 0}
+                salaryMax={15000}
+                onPosChange={(val) => setFilters({...filters, position: val})}
+                onTeamChange={(val) => setFilters({...filters, team: val === 'All' ? 'all' : val})}
+                onSeasonChange={(val) => setFilters({...filters, season: val.toString()})}
+                onSlateChange={() => {}}
+                onWeekFromChange={(val) => setFilters({...filters, weekStart: val, week: val.toString()})}
+                onWeekToChange={(val) => setFilters({...filters, weekEnd: val})}
+                onSalaryMinChange={(val) => setFilters({...filters, minSalary: val.toString()})}
+                onSalaryMaxChange={() => {}}
+                playerCount={filteredPlayers.length}
+                loading={loading}
+              />
+
+              {/* Grid Container */}
+              <div className="flex-1 overflow-hidden p-4 bg-gray-50">
+                <div className="ag-theme-alpine" style={{ height: 'calc(100vh - 280px)', minHeight: '400px', width: '100%' }}>
                   <AgGridReact
                     rowData={filteredPlayers}
                     columnDefs={columnDefs}
@@ -1160,9 +1096,9 @@ const FantasyDashboard = () => {
                   />
                 </div>
               </div>
-            )}
-          </main>
-        </div>
+            </div>
+          )}
+        </main>
 
         {/* Player Detail Slide-over */}
         {selectedPlayer && (
