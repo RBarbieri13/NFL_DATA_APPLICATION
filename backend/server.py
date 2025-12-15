@@ -3115,7 +3115,19 @@ async def get_analyzer_data(
                 ws.targets,
                 ws.fantasy_points,
                 COALESCE(CAST(sc.offense_snaps AS INTEGER), 0) as snap_percentage,
-                COALESCE(CAST(dp.salary AS INTEGER), CAST(ws.dk_salary AS INTEGER), 0) as dk_salary,
+                COALESCE(
+                    CAST(dp.salary AS INTEGER),
+                    CASE
+                        WHEN ws.dk_salary IS NOT NULL AND ws.dk_salary != '' THEN
+                            CAST(
+                                CAST(REPLACE(REPLACE(ws.dk_salary, '$', ''), 'k', '') AS DOUBLE) *
+                                CASE WHEN ws.dk_salary LIKE '%k' THEN 1000 ELSE 1 END
+                                AS INTEGER
+                            )
+                        ELSE 0
+                    END,
+                    0
+                ) as dk_salary,
                 COALESCE(bdl.rushing_attempts, 0) as rushing_attempts,
                 COALESCE(bdl.passing_completions, 0) as passing_completions,
                 COALESCE(bdl.passing_attempts, 0) as passing_attempts,
