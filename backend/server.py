@@ -29,6 +29,15 @@ import re
 import etl
 from balldontlie import BallDontLieClient, get_client as get_bdl_client
 
+# Import optimized data loader
+from optimized_data_loader import (
+    OptimizedDataLoader, 
+    OptimizedAPIClient, 
+    normalize_player_name_cached,
+    create_optimized_loader,
+    create_optimized_api_client
+)
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -41,6 +50,10 @@ api_router = APIRouter(prefix="/api")
 # Initialize DuckDB connection
 db_path = ROOT_DIR / "fantasy_football.db"
 conn = duckdb.connect(str(db_path))
+
+# Initialize optimized data loader and API client
+optimized_loader = create_optimized_loader(str(db_path))
+optimized_api_client = create_optimized_api_client(RAPIDAPI_KEY, RAPIDAPI_HOST)
 
 # Thread pool for async operations
 executor = ThreadPoolExecutor(max_workers=3)
@@ -178,28 +191,8 @@ class SnapCountsResponse(BaseModel):
     timestamp: datetime
     records_loaded: Optional[int] = 0
 
-def normalize_player_name(name: str) -> str:
-    """
-    Normalize player names for better matching between data sources.
-    Handles common variations like Jr/Sr suffixes, punctuation, etc.
-    """
-    if not name:
-        return ""
-    
-    # Convert to lowercase and strip whitespace
-    normalized = name.lower().strip()
-    
-    # Remove common suffixes that vary between sources
-    suffixes = [' jr.', ' jr', ' sr.', ' sr', ' iii', ' ii', ' iv']
-    for suffix in suffixes:
-        if normalized.endswith(suffix):
-            normalized = normalized[:-len(suffix)].strip()
-            break
-    
-    # Remove periods and extra spaces
-    normalized = normalized.replace('.', '').replace('  ', ' ')
-    
-    return normalized
+# Use optimized cached version
+normalize_player_name = normalize_player_name_cached
 
 def get_current_nfl_week(season: int = 2025) -> int:
     """
@@ -263,165 +256,18 @@ def calculate_fantasy_points(stats: Dict) -> float:
     return round(points, 2)
 
 def fetch_draftkings_salaries(season: int, week: int) -> Dict:
-    """Fetch DraftKings salaries from RapidAPI for specific season/week"""
-    url = f"https://{RAPIDAPI_HOST}/getDFSsalaries"
+    """Fetch DraftKings salaries using optimized API client"""
+    result = optimized_api_client.fetch_draftkings_salaries_batch([(season, week)])
     
-    querystring = {
-        "week": str(week),
-        "season": str(season),
-        "site": "draftkings"
+    return {
+        'success': result['success'],
+        'data': result['data'],
+        'count': len(result['data'])
     }
-    
-    headers = {
-        "x-rapidapi-key": RAPIDAPI_KEY,
-        "x-rapidapi-host": RAPIDAPI_HOST,
-        "Content-Type": "application/json"
-    }
-    
-    try:
-        response = requests.get(url, headers=headers, params=querystring, timeout=15)
-        response.raise_for_status()
-        
-        data = response.json()
-        logging.info(f"DraftKings API response received for season {season}, week {week}")
-        
-        processed_data = []
-        if 'body' in data and 'draftkings' in data['body']:
-            for player in data['body']['draftkings']:
-                # Filter for offensive positions only
-                position = player.get('pos', '').upper()
-                if position in SKILL_POSITIONS:
-                    # Parse salary (handle both string and numeric)
-                    salary_raw = player.get('salary', 0)
-                    if isinstance(salary_raw, str):
-                        salary = int(salary_raw.replace('$', '').replace(',', '')) if salary_raw else 0
-                    else:
-                        salary = int(salary_raw) if salary_raw else 0
-                    
-                    processed_data.append({
-                        'player_name': player.get('longName', ''),
-                        'team': player.get('team', '').upper(),
-                        'position': position,
-                        'salary': salary,
-                        'dk_player_id': player.get('playerID', ''),
-                        'season': season,
-                        'week': week
-                    })
-        
-        return {
-            'success': True,
-            'data': processed_data,
-            'count': len(processed_data)
-        }
-        
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching DraftKings salaries for {season} week {week}: {e}")
-        return {
-            'success': False,
-            'error': str(e),
-            'data': []
-        }
-    except Exception as e:
-        logging.error(f"Unexpected error in DraftKings API for {season} week {week}: {e}")
-        return {
-            'success': False,
-            'error': str(e),
-            'data': []
-        }
 
 def load_snap_counts_for_seasons(seasons: List[int]) -> Dict:
-    """Load snap counts for specified seasons using nflreadpy"""
-    try:
-        total_loaded = 0
-        
-        for season in seasons:
-            logging.info(f"Loading snap counts for season {season}")
-            
-            try:
-                # Load snap counts using nflreadpy
-                snap_counts_data = nfl.load_snap_counts(seasons=[season])
-                
-                if snap_counts_data is not None and len(snap_counts_data) > 0:
-                    # Convert Polars to Pandas
-                    snap_counts_pd = snap_counts_data.to_pandas()
-                    
-                    # Filter for skill positions and regular season games
-                    if 'game_type' in snap_counts_pd.columns:
-                        snap_counts_pd = snap_counts_pd[snap_counts_pd['game_type'] == 'REG']
-                        logging.info(f"After filtering for regular season: {len(snap_counts_pd)} records")
-                    
-                    # Filter for skill positions only
-                    snap_counts_pd = snap_counts_pd[snap_counts_pd['position'].isin(SKILL_POSITIONS)]
-                    logging.info(f"After filtering for skill positions: {len(snap_counts_pd)} records")
-                    
-                    # Filter for players with offensive snaps (ensure column exists and has data)
-                    if 'offense_snaps' in snap_counts_pd.columns:
-                        snap_counts_pd = snap_counts_pd[snap_counts_pd['offense_snaps'] > 0]
-                        logging.info(f"After filtering for offense_snaps > 0: {len(snap_counts_pd)} records")
-                    else:
-                        logging.warning("No 'offense_snaps' column found in data")
-                    
-                    if len(snap_counts_pd) > 0:
-                        # Create unique ID for each record - use simpler approach
-                        snap_counts_pd['id'] = snap_counts_pd.apply(
-                            lambda row: f"{row.get('season', '')}_{row.get('week', '')}_{row.get('team', '')}_{row.get('player', '').replace(' ', '_')}", axis=1
-                        )
-                        
-                        # Delete existing data for this season
-                        conn.execute("DELETE FROM snap_counts WHERE season = ?", [season])
-                        
-                        # Register DataFrame with DuckDB
-                        conn.register('snap_counts_df', snap_counts_pd)
-                        
-                        # Insert snap counts data
-                        conn.execute("""
-                            INSERT INTO snap_counts 
-                            SELECT 
-                                id,
-                                COALESCE(pfr_player_id, '') as player_id,
-                                player as player_name,
-                                team,
-                                season,
-                                week,
-                                COALESCE(offense_snaps, 0) as offense_snaps,
-                                COALESCE(offense_pct, 0.0) as offense_pct,
-                                COALESCE(defense_snaps, 0) as defense_snaps,
-                                COALESCE(defense_pct, 0.0) as defense_pct,
-                                COALESCE(st_snaps, 0) as st_snaps,
-                                COALESCE(st_pct, 0.0) as st_pct,
-                                position,
-                                COALESCE(pfr_game_id, game_id, '') as game_id,
-                                COALESCE(opponent, '') as opponent_team,
-                                CURRENT_TIMESTAMP as created_at
-                            FROM snap_counts_df
-                        """)
-                        
-                        snap_count = len(snap_counts_pd)
-                        total_loaded += snap_count
-                        logging.info(f"Loaded {snap_count} snap count records for season {season}")
-                    else:
-                        logging.warning(f"No skill position snap counts found for season {season}")
-                else:
-                    logging.warning(f"No snap counts data returned for season {season}")
-                    
-            except Exception as e:
-                logging.error(f"Error loading snap counts for season {season}: {e}")
-                logging.error(traceback.format_exc())
-                continue
-        
-        return {
-            'success': True,
-            'total_loaded': total_loaded
-        }
-        
-    except Exception as e:
-        logging.error(f"Error in load_snap_counts_for_seasons: {e}")
-        logging.error(traceback.format_exc())
-        return {
-            'success': False,
-            'error': str(e),
-            'total_loaded': 0
-        }
+    """Load snap counts using optimized data loader"""
+    return optimized_loader.load_snap_counts_optimized(seasons)
 
 def is_pricing_cached(season: int, week: int) -> bool:
     """Check if pricing data is already cached for a specific season/week"""
@@ -475,20 +321,19 @@ def cache_draftkings_pricing(pricing_data: List[Dict], season: int, week: int) -
         return 0
 
 def load_historical_draftkings_data(start_season: int = 2024, end_season: int = 2025) -> Dict:
-    """Load historical DraftKings data for all weeks from start_season to current"""
-    total_cached = 0
-    total_weeks_processed = 0
-    errors = []
-    
+    """Load historical DraftKings data using optimized batch processing"""
     current_date = datetime.now()
     current_season = current_date.year if current_date.month >= 9 else current_date.year - 1
+    
+    # Collect all season/week pairs that need to be fetched
+    season_week_pairs = []
     
     for season in range(start_season, end_season + 1):
         # Determine max week for each season
         if season < current_season:
             max_week = 18  # Full season for past years
         elif season == current_season:
-            # For current season, estimate current week (rough calculation)
+            # For current season, estimate current week
             if current_date.month >= 9:  # Season started
                 weeks_since_start = (current_date - datetime(season, 9, 1)).days // 7
                 max_week = min(max(weeks_since_start, 1), 18)
@@ -501,39 +346,42 @@ def load_historical_draftkings_data(start_season: int = 2024, end_season: int = 
             # Skip if already cached (unless it's current week of current season)
             if season == current_season and week == max_week:
                 # Always refresh current week
-                pass
-            elif is_pricing_cached(season, week):
-                logging.info(f"Skipping cached data for season {season}, week {week}")
-                continue
-            
-            try:
-                logging.info(f"Fetching DraftKings data for season {season}, week {week}")
-                result = fetch_draftkings_salaries(season, week)
-                
-                if result['success'] and result['data']:
-                    cached = cache_draftkings_pricing(result['data'], season, week)
-                    total_cached += cached
-                    logging.info(f"Successfully cached {cached} records for season {season}, week {week}")
-                else:
-                    error_msg = f"No data for season {season}, week {week}: {result.get('error', 'Unknown error')}"
-                    errors.append(error_msg)
-                    logging.warning(error_msg)
-                
-                total_weeks_processed += 1
-                
-                # Rate limiting - wait between requests
-                time.sleep(1)
-                
-            except Exception as e:
-                error_msg = f"Error processing season {season}, week {week}: {str(e)}"
-                errors.append(error_msg)
-                logging.error(error_msg)
-                continue
+                season_week_pairs.append((season, week))
+            elif not is_pricing_cached(season, week):
+                season_week_pairs.append((season, week))
+    
+    if not season_week_pairs:
+        return {
+            'total_cached': 0,
+            'total_weeks_processed': 0,
+            'errors': []
+        }
+    
+    # Use optimized batch fetching
+    logging.info(f"Fetching DraftKings data for {len(season_week_pairs)} season/week combinations")
+    result = optimized_api_client.fetch_draftkings_salaries_batch(season_week_pairs)
+    
+    # Cache all the data
+    total_cached = 0
+    if result['success'] and result['data']:
+        # Group data by season/week for caching
+        data_by_week = {}
+        for record in result['data']:
+            key = (record['season'], record['week'])
+            if key not in data_by_week:
+                data_by_week[key] = []
+            data_by_week[key].append(record)
+        
+        # Cache each week's data
+        for (season, week), week_data in data_by_week.items():
+            cached = cache_draftkings_pricing(week_data, season, week)
+            total_cached += cached
+            logging.info(f"Cached {cached} records for season {season}, week {week}")
     
     return {
         'total_cached': total_cached,
-        'weeks_processed': total_weeks_processed,
-        'errors': errors
+        'total_weeks_processed': result['successful_fetches'],
+        'errors': []
     }
 
 async def load_draftkings_pricing_from_sheets():

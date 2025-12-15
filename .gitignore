@@ -32,6 +32,8 @@ npm-debug.log*
 # Database
 *.db
 *.sqlite
+*.db.wal
+*.db-shm
 
 # Screenshots (optional - keep for documentation)
 # screenshot-*.png
@@ -39,3 +41,7 @@ npm-debug.log*
 # Cache
 .cache/
 .parcel-cache/
+
+# Optimization artifacts
+backend/backend.log
+backend/frontend.log
