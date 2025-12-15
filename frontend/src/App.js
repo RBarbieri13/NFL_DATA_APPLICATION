@@ -18,7 +18,7 @@ import MenuWiseSidebar from './components/layout/MenuWiseSidebar';
 import TrendToolGrid from './components/TrendToolGrid';
 import FantasyAnalyzerDemo from './components/FantasyAnalyzerDemo';
 import Admin from './components/Admin';
-import AnalyzerFilters from './components/AnalyzerFilters';
+import SmartFilter from './components/filters/SmartFilter';
 import PerformanceDemo from './components/PerformanceDemo';
 import PlayerCardDrawer, { transformPlayerDataForCard } from './components/PlayerCardDrawer';
 import { getTeamLogo } from './data/nflTeamLogos';
@@ -902,6 +902,59 @@ const FantasyDashboard = () => {
     }, 300);
   };
 
+  // Handle SmartFilter changes for DataTable
+  const handleSmartFilterChange = (smartFilters) => {
+    const newFilters = {
+      ...filters,
+      position: smartFilters.positions.includes('All') ? 'all' : smartFilters.positions[0],
+      team: smartFilters.team === 'All' ? 'all' : smartFilters.team,
+      season: smartFilters.season,
+      weekStart: smartFilters.weekRange[0],
+      weekEnd: smartFilters.weekRange[1],
+      week: smartFilters.weekRange[0].toString(),
+      minSalary: smartFilters.salaryRange[0].toString(),
+    };
+    setFilters(newFilters);
+    setTimeout(() => {
+      fetchPlayersWithFilters(newFilters);
+    }, 300);
+  };
+
+  // Handle SmartFilter changes for Trend Tool
+  const handleTrendSmartFilterChange = (smartFilters) => {
+    setTrendFilters({
+      ...trendFilters,
+      position: smartFilters.positions.includes('All') ? 'All' : smartFilters.positions[0],
+      team: smartFilters.team,
+      season: parseInt(smartFilters.season),
+      slate: smartFilters.slate,
+      startWeek: smartFilters.weekRange[0],
+      endWeek: smartFilters.weekRange[1],
+      salaryMin: smartFilters.salaryRange[0],
+      salaryMax: smartFilters.salaryRange[1],
+    });
+  };
+
+  // Convert existing filters to SmartFilter format for DataTable
+  const dataTableSmartFilters = useMemo(() => ({
+    positions: filters.position === 'all' ? ['All'] : [filters.position],
+    team: filters.team === 'all' ? 'All' : filters.team,
+    season: filters.season,
+    slate: 'Main',
+    weekRange: [filters.weekStart || parseInt(filters.week) || 1, filters.weekEnd || parseInt(filters.week) || 4],
+    salaryRange: [parseInt(filters.minSalary) || 0, 15000],
+  }), [filters]);
+
+  // Convert existing trendFilters to SmartFilter format
+  const trendSmartFilters = useMemo(() => ({
+    positions: trendFilters.position === 'All' ? ['All'] : [trendFilters.position],
+    team: trendFilters.team,
+    season: trendFilters.season.toString(),
+    slate: trendFilters.slate,
+    weekRange: [trendFilters.startWeek, trendFilters.endWeek],
+    salaryRange: [trendFilters.salaryMin, trendFilters.salaryMax],
+  }), [trendFilters]);
+
   // Separate function for fetching with specific filters
   const fetchPlayersWithFilters = async (filterParams = filters) => {
     try {
@@ -1021,27 +1074,14 @@ const FantasyDashboard = () => {
         <main className="flex-1 overflow-hidden relative flex flex-col">
           {activeTab === 'trend-tool' ? (
             <div className="flex flex-col h-full w-full bg-white">
-              {/* Trend Tool Filters - Using AnalyzerFilters component */}
-              <AnalyzerFilters
-                selectedPos={trendFilters.position}
-                selectedTeam={trendFilters.team}
-                season={trendFilters.season}
-                selectedSlate={trendFilters.slate}
-                weekFrom={trendFilters.startWeek}
-                weekTo={trendFilters.endWeek}
-                salaryMin={trendFilters.salaryMin}
-                salaryMax={trendFilters.salaryMax}
-                onPosChange={(val) => setTrendFilters({...trendFilters, position: val})}
-                onTeamChange={(val) => setTrendFilters({...trendFilters, team: val})}
-                onSeasonChange={(val) => setTrendFilters({...trendFilters, season: val})}
-                onSlateChange={(val) => setTrendFilters({...trendFilters, slate: val})}
-                onWeekFromChange={(val) => setTrendFilters({...trendFilters, startWeek: val})}
-                onWeekToChange={(val) => setTrendFilters({...trendFilters, endWeek: val})}
-                onSalaryMinChange={(val) => setTrendFilters({...trendFilters, salaryMin: val})}
-                onSalaryMaxChange={(val) => setTrendFilters({...trendFilters, salaryMax: val})}
-                playerCount={trendData.length}
-                loading={trendLoading}
-              />
+              {/* Trend Tool Filters - Using SmartFilter component */}
+              <div className="p-3 bg-gray-50 border-b border-gray-200">
+                <SmartFilter
+                  initialFilters={trendSmartFilters}
+                  onFilterChange={handleTrendSmartFilterChange}
+                  className="max-w-full"
+                />
+              </div>
 
               {/* Grid Container - AG Grid requires explicit pixel height */}
               <div className="flex-1 overflow-hidden p-4 bg-gray-50">
@@ -1057,27 +1097,14 @@ const FantasyDashboard = () => {
             </div>
           ) : (
             <div className="flex flex-col h-full w-full bg-white">
-              {/* DataTable Filters - Same as Fantasy Analyzer */}
-              <AnalyzerFilters
-                selectedPos={filters.position}
-                selectedTeam={filters.team === 'all' ? 'All' : filters.team}
-                season={parseInt(filters.season)}
-                selectedSlate="Main"
-                weekFrom={filters.weekStart || parseInt(filters.week) || 1}
-                weekTo={filters.weekEnd || parseInt(filters.week) || 4}
-                salaryMin={parseInt(filters.minSalary) || 0}
-                salaryMax={15000}
-                onPosChange={(val) => setFilters({...filters, position: val})}
-                onTeamChange={(val) => setFilters({...filters, team: val === 'All' ? 'all' : val})}
-                onSeasonChange={(val) => setFilters({...filters, season: val.toString()})}
-                onSlateChange={() => {}}
-                onWeekFromChange={(val) => setFilters({...filters, weekStart: val, week: val.toString()})}
-                onWeekToChange={(val) => setFilters({...filters, weekEnd: val})}
-                onSalaryMinChange={(val) => setFilters({...filters, minSalary: val.toString()})}
-                onSalaryMaxChange={() => {}}
-                playerCount={filteredPlayers.length}
-                loading={loading}
-              />
+              {/* DataTable Filters - Using SmartFilter component */}
+              <div className="p-3 bg-gray-50 border-b border-gray-200">
+                <SmartFilter
+                  initialFilters={dataTableSmartFilters}
+                  onFilterChange={handleSmartFilterChange}
+                  className="max-w-full"
+                />
+              </div>
 
               {/* Grid Container */}
               <div className="flex-1 overflow-hidden p-2 bg-gray-100">
