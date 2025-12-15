@@ -20,6 +20,7 @@ import FantasyAnalyzerDemo from './components/FantasyAnalyzerDemo';
 import Admin from './components/Admin';
 import AnalyzerFilters from './components/AnalyzerFilters';
 import PerformanceDemo from './components/PerformanceDemo';
+import PlayerCardDrawer, { transformPlayerDataForCard } from './components/PlayerCardDrawer';
 import { getTeamLogo } from './data/nflTeamLogos';
 import '@/App.css';
 
@@ -1101,72 +1102,11 @@ const FantasyDashboard = () => {
         </main>
 
         {/* Player Detail Slide-over */}
-        {selectedPlayer && (
-          <div className={`fixed inset-y-0 right-0 w-96 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${playerDetailOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-            <div className="h-full flex flex-col">
-              <div className="p-4 bg-gray-900 text-white flex justify-between items-start">
-                <div>
-                  <h2 className="text-xl font-bold">{selectedPlayer.player_name}</h2>
-                  <div className="flex items-center gap-2 mt-1 text-gray-300 text-sm">
-                    <span className="font-semibold">{selectedPlayer.position}</span>
-                    <span>•</span>
-                    <span>{selectedPlayer.team}</span>
-                  </div>
-                </div>
-                <button onClick={() => setPlayerDetailOpen(false)} className="text-gray-400 hover:text-white">
-                  <span className="sr-only">Close</span>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Season Stats</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-xs text-gray-500">Fantasy Points</div>
-                      <div className="text-2xl font-bold text-blue-600">{calculateFantasyPoints(selectedPlayer)}</div>
-                      <div className="text-xs text-gray-400 mt-1">Avg: {(calculateFantasyPoints(selectedPlayer) / 17).toFixed(1)}/g</div>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-xs text-gray-500">Snap %</div>
-                      <div className="text-2xl font-bold text-gray-800">{selectedPlayer.snap_percentage || 0}%</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Recent Games</h3>
-                  <div className="space-y-2">
-                    {playerGameHistory.length > 0 ? (
-                      playerGameHistory.map((game, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
-                          <div className="flex items-center gap-3">
-                            <div className="bg-gray-100 rounded-md w-8 h-8 flex items-center justify-center text-xs font-bold text-gray-600">
-                              W{game.week}
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium">vs {game.opponent}</div>
-                              <div className="text-xs text-gray-500">${(game.dk_salary || 0).toLocaleString()}</div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold text-blue-600">{calculateFantasyPoints(game)}</div>
-                            <div className="text-xs text-gray-400">FPTS</div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-4 text-gray-500 text-sm">No recent game data available</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <PlayerCardDrawer
+          isOpen={playerDetailOpen}
+          onClose={() => setPlayerDetailOpen(false)}
+          playerData={selectedPlayer ? transformPlayerDataForCard(selectedPlayer, playerGameHistory) : null}
+        />
       </div>
     </div>
   );
