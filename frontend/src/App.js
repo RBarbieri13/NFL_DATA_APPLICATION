@@ -19,7 +19,7 @@ import TrendToolGrid from './components/TrendToolGrid';
 import FantasyAnalyzerDemo from './components/FantasyAnalyzerDemo';
 import Admin from './components/Admin';
 import AnalyzerFilters from './components/AnalyzerFilters';
-import AggregateDataTable from './components/AggregateDataTable';
+import PerformanceDemo from './components/PerformanceDemo';
 import { getTeamLogo } from './data/nflTeamLogos';
 import '@/App.css';
 
@@ -1231,6 +1231,7 @@ function App() {
           <Route path="/data-table" element={<FantasyDashboard />} />
           <Route path="/trend-tool" element={<FantasyDashboard />} />
           <Route path="/fantasy-analyzer" element={<FantasyAnalyzerDemo />} />
+          <Route path="/performance" element={<PerformanceDemo />} />
           <Route path="/admin" element={<Admin />} />
         </Routes>
       </BrowserRouter>
