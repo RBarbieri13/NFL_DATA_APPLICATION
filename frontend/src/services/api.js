@@ -3,7 +3,7 @@
  */
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:10000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:12000/api';
 const CACHE_TTL = parseInt(process.env.REACT_APP_CACHE_TTL) || 300000; // 5 minutes
 
 // Simple in-memory cache
