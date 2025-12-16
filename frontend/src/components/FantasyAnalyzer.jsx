@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { ChevronDown, ChevronRight, Settings, X, Star } from 'lucide-react';
 import { getTeamLogo } from '../data/nflTeamLogos';
 import { TrendBarCell } from './grid/trend';
+import PlayerCardDrawer, { transformPlayerDataForCard } from './PlayerCardDrawer';
 
 // Helper function to get subtle blue background color for snap counts (relative to column)
 const getSnapBackgroundColor = (value, allValues) => {
@@ -530,6 +531,68 @@ const FantasyAnalyzer = () => {
   // Trend column config state
   const [trendStat, setTrendStat] = useState('fpts');
   const [trendWeeks, setTrendWeeks] = useState(4);
+
+  // Player card drawer state
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [playerDrawerOpen, setPlayerDrawerOpen] = useState(false);
+
+  // Handle player name click to open drawer
+  const handlePlayerClick = useCallback((player) => {
+    // Transform Fantasy Analyzer player data format to match what PlayerCardDrawer expects
+    const transformedPlayer = {
+      player_name: player.name,
+      position: player.pos,
+      team: player.team,
+      dk_salary: player.price,
+      // Aggregate stats from weeks data
+      ...aggregateWeeklyStats(player.weeks || [])
+    };
+    setSelectedPlayer(transformedPlayer);
+    setPlayerDrawerOpen(true);
+  }, []);
+
+  // Aggregate weekly stats for the player card
+  const aggregateWeeklyStats = (weeks) => {
+    if (!weeks || weeks.length === 0) return {};
+    
+    const totals = weeks.reduce((acc, week) => {
+      acc.passing_yards = (acc.passing_yards || 0) + (week.passYds || 0);
+      acc.passing_tds = (acc.passing_tds || 0) + (week.passTd || 0);
+      acc.interceptions = (acc.interceptions || 0) + (week.int || 0);
+      acc.rushing_yards = (acc.rushing_yards || 0) + (week.rushYds || 0);
+      acc.rushing_tds = (acc.rushing_tds || 0) + (week.rushTd || 0);
+      acc.targets = (acc.targets || 0) + (week.tgts || 0);
+      acc.receptions = (acc.receptions || 0) + (week.rec || 0);
+      acc.receiving_yards = (acc.receiving_yards || 0) + (week.recYds || 0);
+      acc.receiving_tds = (acc.receiving_tds || 0) + (week.recTd || 0);
+      return acc;
+    }, {});
+    
+    return totals;
+  };
+
+  // Build game history from weeks data for the player card
+  const buildGameHistory = (player) => {
+    if (!player || !player.weeks) return [];
+    
+    return player.weeks.map(week => ({
+      week: week.num,
+      opponent: week.opp || 'N/A',
+      dk_salary: player.price,
+      fantasy_points: week.fpts || 0,
+      snap_percentage: week.dk || 0,
+      targets: week.tgts || 0,
+      receptions: week.rec || 0,
+      receiving_yards: week.recYds || 0,
+      receiving_tds: week.recTd || 0,
+      rushing_attempts: week.rushAtt || 0,
+      rushing_yards: week.rushYds || 0,
+      rushing_tds: week.rushTd || 0,
+      passing_yards: week.passYds || 0,
+      passing_tds: week.passTd || 0,
+      interceptions: week.int || 0
+    }));
+  };
 
   // Toggle favorite status for a player
   const toggleFavorite = useCallback((playerId) => {
@@ -1563,7 +1626,16 @@ const FantasyAnalyzer = () => {
                             }`}
                           />
                         </button>
-                        <span className="truncate">{player.name}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePlayerClick(player);
+                          }}
+                          className="truncate text-left hover:text-blue-600 hover:underline cursor-pointer"
+                          title={`View ${player.name} details`}
+                        >
+                          {player.name}
+                        </button>
                         {getTeamLogo(player.team) && (
                           <img src={getTeamLogo(player.team)} alt={player.team} className="w-4 h-4 object-contain flex-shrink-0" />
                         )}
@@ -1608,6 +1680,13 @@ const FantasyAnalyzer = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Player Card Drawer */}
+      <PlayerCardDrawer
+        isOpen={playerDrawerOpen}
+        onClose={() => setPlayerDrawerOpen(false)}
+        playerData={selectedPlayer ? transformPlayerDataForCard(selectedPlayer, buildGameHistory(sortedData.find(p => p.name === selectedPlayer.player_name))) : null}
+      />
     </div>
   );
 };
