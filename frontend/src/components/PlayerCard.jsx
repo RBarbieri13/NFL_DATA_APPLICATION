@@ -144,15 +144,15 @@ const GameLogRow = ({ game, position }) => {
 const PlayerCard = ({ playerData, onClose }) => {
   const [isGameLogsExpanded, setIsGameLogsExpanded] = useState(true);
 
+  // Memoize career stats calculation - must be before conditional return
+  const careerStats = useMemo(() => playerData?.career || {}, [playerData?.career]);
+
   if (!playerData) return null;
 
   const { player, trends, gameLogs, seasonHistory, career } = playerData;
   const position = player?.position || 'WR';
   const isQB = position === 'QB';
   const isRB = position === 'RB';
-
-  // Memoize career stats calculation
-  const careerStats = useMemo(() => career || {}, [career]);
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 overflow-hidden">

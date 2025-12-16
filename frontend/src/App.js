@@ -75,7 +75,7 @@ const FantasyDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [filters, setFilters] = useState({
-    season: '2025',
+    season: '2024',
     week: '4',  // Single week selection (for backward compatibility)
     weekStart: null,  // Start of week range
     weekEnd: null,    // End of week range
@@ -111,7 +111,7 @@ const FantasyDashboard = () => {
     position: 'RB',
     startWeek: 1,
     endWeek: 4,
-    season: 2025,
+    season: 2024,
     slate: 'Main',
     salaryMin: 0,
     salaryMax: 15000
@@ -327,8 +327,8 @@ const FantasyDashboard = () => {
           type: 'numericColumn',
           cellRenderer: (params) => {
             const salary = params.value;
-            // Only show DK salary for 2025 data
-            if (params.data.season !== '2025') {
+            // Only show DK salary for 2024 data
+            if (params.data.season !== '2024') {
               return <div className="py-1 px-2 text-sm text-gray-400">-</div>;
             }
             if (salary && salary > 0) {
