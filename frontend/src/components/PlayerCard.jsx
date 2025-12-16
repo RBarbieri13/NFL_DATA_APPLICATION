@@ -144,15 +144,17 @@ const GameLogRow = ({ game, position }) => {
 const PlayerCard = ({ playerData, onClose }) => {
   const [isGameLogsExpanded, setIsGameLogsExpanded] = useState(true);
 
-  if (!playerData) return null;
-
-  const { player, trends, gameLogs, seasonHistory, career } = playerData;
+  // Extract data with safe defaults - must be before any conditional returns
+  const { player, trends, gameLogs, seasonHistory, career } = playerData || {};
   const position = player?.position || 'WR';
   const isQB = position === 'QB';
   const isRB = position === 'RB';
 
-  // Memoize career stats calculation
+  // Memoize career stats calculation - must be called before any conditional returns
   const careerStats = useMemo(() => career || {}, [career]);
+
+  // Early return AFTER all hooks are called to satisfy Rules of Hooks
+  if (!playerData) return null;
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 overflow-hidden">

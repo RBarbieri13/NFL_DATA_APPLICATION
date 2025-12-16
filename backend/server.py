@@ -43,7 +43,7 @@ db_path = ROOT_DIR / "fantasy_football.db"
 conn = duckdb.connect(str(db_path))
 
 # Thread pool for async operations
-executor = ThreadPoolExecutor(max_workers=3)
+executor = ThreadPoolExecutor(max_workers=10)
 
 # DraftKings PPR Scoring System
 DRAFTKINGS_SCORING = {
@@ -1404,8 +1404,8 @@ async def load_draftkings_pricing_from_sheets():
         raise
 
 
-async def scrape_draftkings_salaries_from_fantasypros():
-    """Scrape current DraftKings salaries from FantasyPros website"""
+def scrape_draftkings_salaries_from_fantasypros_sync():
+    """Synchronous version of salary scraping - runs entirely in executor thread"""
     try:
         url = "https://www.fantasypros.com/daily-fantasy/nfl/draftkings-salary-changes.php"
         headers = {
@@ -1417,9 +1417,10 @@ async def scrape_draftkings_salaries_from_fantasypros():
         # Fetch the page
         response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
+        html_text = response.text
         
         # Parse HTML
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(html_text, 'html.parser')
         
         # Find the main data table
         table = None
@@ -1634,6 +1635,11 @@ async def scrape_draftkings_salaries_from_fantasypros():
             'count': 0
         }
 
+async def scrape_draftkings_salaries_from_fantasypros():
+    """Async wrapper that runs the sync scraping function in executor to avoid blocking event loop"""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(executor, scrape_draftkings_salaries_from_fantasypros_sync)
+
 # Initialize scheduler for automatic weekly updates
 scheduler = BackgroundScheduler()
 
@@ -1641,12 +1647,8 @@ def scheduled_scrape_salaries():
     """Scheduled job to scrape DraftKings salaries every Wednesday"""
     logging.info("Running scheduled DraftKings salary scrape...")
     try:
-        # Run the async function in a new event loop
-        import asyncio
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(scrape_draftkings_salaries_from_fantasypros())
-        loop.close()
+        # Run the sync function directly since we're in a background thread
+        result = scrape_draftkings_salaries_from_fantasypros_sync()
         logging.info(f"Scheduled scrape completed: {result}")
     except Exception as e:
         logging.error(f"Scheduled scrape failed: {e}")
@@ -3936,27 +3938,10 @@ async def startup_event():
     scheduler.start()
     logger.info("Scheduler started: DraftKings salaries will be scraped every Wednesday at 10 AM")
     
-    # Check if database has data, if not, auto-load
-    try:
-        result = conn.execute("SELECT COUNT(*) as count FROM weekly_stats WHERE season = 2025").fetchone()
-        row_count = result[0] if result else 0
-        
-        if row_count < 100:  # If less than 100 records, database is likely empty or outdated
-            logger.info(f"Database has only {row_count} records for 2025. Auto-loading NFL data...")
-            # Don't await here, run in background
-            asyncio.create_task(load_nfl_data_background())
-        else:
-            logger.info(f"Database already populated with {row_count} records for 2025 season")
-            
-        # Trigger immediate salary scrape on startup to get latest data
-        logger.info("Triggering immediate DraftKings salary scrape...")
-        asyncio.create_task(scrape_draftkings_salaries_from_fantasypros())
-
-        # Load snap counts on startup to ensure they're populated
-        logger.info("Loading snap counts for 2024-2025 seasons...")
-        asyncio.create_task(load_snap_counts_async([2024, 2025]))
-    except Exception as e:
-        logger.warning(f"Could not check database status: {e}. Skipping auto-load.")
+    # Skip heavy background tasks on startup to avoid blocking the event loop
+    # These can be triggered manually via API endpoints if needed
+    logger.info("Startup complete. Background data loading disabled to ensure API responsiveness.")
+    logger.info("Use /api/refresh-data or /api/scrape-salaries endpoints to load data manually if needed.")
 
 @app.on_event("shutdown")
 async def shutdown_event():
