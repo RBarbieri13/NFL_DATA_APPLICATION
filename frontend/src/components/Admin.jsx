@@ -33,20 +33,24 @@ const Admin = () => {
     setStatusError(null);
 
     try {
-      // Fetch data status - which weeks have player data
-      const dataResponse = await fetch(`${BACKEND_URL}/api/admin/data-status`);
-      if (dataResponse.ok) {
-        const data = await dataResponse.json();
-        setDataStatus(data);
-      }
+      // Admin endpoints not available in simplified backend
+      // Commenting out until backend admin endpoints are restored
 
-      // Fetch DraftKings pricing status
-      const pricingResponse = await fetch(`${BACKEND_URL}/api/admin/pricing-status`);
-      if (pricingResponse.ok) {
-        const pricing = await pricingResponse.json();
-        setPricingStatus(pricing);
-      }
-      // Update timestamp on successful fetch
+      // const dataResponse = await fetch(`${BACKEND_URL}/api/admin/data-status`);
+      // if (dataResponse.ok) {
+      //   const data = await dataResponse.json();
+      //   setDataStatus(data);
+      // }
+
+      // const pricingResponse = await fetch(`${BACKEND_URL}/api/admin/pricing-status`);
+      // if (pricingResponse.ok) {
+      //   const pricing = await pricingResponse.json();
+      //   setPricingStatus(pricing);
+      // }
+
+      // Set placeholder status
+      setDataStatus({ message: "Admin endpoints not available in current backend version" });
+      setPricingStatus({ message: "Admin endpoints not available in current backend version" });
       setLastStatusUpdate(new Date());
     } catch (err) {
       console.error('Error fetching status:', err);
@@ -74,9 +78,17 @@ const Admin = () => {
     setLoadResult(null);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/refresh-data?seasons=2025`, {
-        method: 'POST'
+      // Admin refresh endpoint not available in simplified backend
+      setLoadResult({
+        success: false,
+        message: "Data refresh endpoint not available in current backend version. Please use backend data management tools directly."
       });
+      setIsLoading(false);
+      return;
+
+      // const response = await fetch(`${BACKEND_URL}/api/refresh-data?seasons=2025`, {
+      //   method: 'POST'
+      // });
 
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);

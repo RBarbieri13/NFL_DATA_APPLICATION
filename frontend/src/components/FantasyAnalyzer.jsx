@@ -760,7 +760,7 @@ const FantasyAnalyzer = () => {
         params.append('team', selectedTeam);
       }
 
-      const response = await fetch(`${BACKEND_URL}/api/analyzer-data?${params}`);
+      const response = await fetch(`${BACKEND_URL}/api/fantasy-analyzer?${params}`);
 
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
